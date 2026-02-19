@@ -17,7 +17,7 @@ Hands-on projects to reinforce core data engineering concepts
 
 **Skills**: Dimensional modeling, ETL pipeline development, data mart architecture, production practices
 
-## [3_Flat_to_WH_Build/](./EDA_3_optimal_skills.sql) - Flat to Warehouse Build
+## [3_Flat_to_WH_Build/](SQL_COURSE/Projects/3_Flat_to_WH_Build) - Flat to Warehouse Build
 
 
 SQL-driven transformation of flat job posting data into a normalized star schema using DuckDB.
