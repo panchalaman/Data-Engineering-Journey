@@ -44,7 +44,7 @@ Data-Engineering-Journey/
 │   ├── README.md
 │   └── SQL_COURSE/
 │       │
-│       ├── Lessons/                             ← Complete SQL course (zero to advanced)
+│       ├── Lessons/                             ← Complete SQL Lessons
 │       │   ├── README.md                        # Course overview & learning path
 │       │   ├── 00_Setup.md                      # DuckDB install + MotherDuck connection
 │       │   ├── 1.01_What_Is_SQL.sql             # Why SQL, DuckDB setup, the dataset
