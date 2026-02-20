@@ -1,4 +1,4 @@
-# SQL Lessons — From Zero to Data Engineer
+# SQL Lessons — Escape the tutorial loop
 
 This is a complete SQL course built around a real dataset of job postings. Every query here runs against DuckDB with a star schema of job postings, companies, and skills data.
 
