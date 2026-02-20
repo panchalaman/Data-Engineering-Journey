@@ -17,9 +17,9 @@ This repo contains **3 end-to-end SQL projects** that progressively demonstrate 
 
 | # | Project | What It Proves |
 |---|---------|----------------|
-| 1 | [**Exploratory Data Analysis**](SQL_COURSE/Projects/1_EDA) | I can write production-quality analytical SQL, design multi-table joins, and extract actionable insights from raw data |
-| 2 | [**Data Warehouse & Mart Build**](SQL_COURSE/Projects/2_WH_Mart_Build) | I can architect end-to-end ETL pipelines — from cloud-hosted CSVs to star schema warehouses to specialized data marts with incremental updates |
-| 3 | [**Flat-to-Warehouse Transformation**](SQL_COURSE/Projects/3_Flat_to_WH_Build) | I can transform messy, denormalized flat files into clean star schemas through string parsing, normalization, and surrogate key generation |
+| 1 | [**Exploratory Data Analysis**](Data-Engineering/SQL_COURSE/Projects/1_EDA) | I can write production-quality analytical SQL, design multi-table joins, and extract actionable insights from raw data |
+| 2 | [**Data Warehouse & Mart Build**](Data-Engineering/SQL_COURSE/Projects/2_WH_Mart_Build) | I can architect end-to-end ETL pipelines — from cloud-hosted CSVs to star schema warehouses to specialized data marts with incremental updates |
+| 3 | [**Flat-to-Warehouse Transformation**](Data-Engineering/SQL_COURSE/Projects/3_Flat_to_WH_Build) | I can transform messy, denormalized flat files into clean star schemas through string parsing, normalization, and surrogate key generation |
 
 Plus a [**Lessons**](./SQL_COURSE/Lessons/) folder with foundational SQL exercises (JOINs, query execution order) that grounded the project work.
 
