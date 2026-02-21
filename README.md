@@ -140,6 +140,8 @@ Data-Engineering-Journey/
     ├── 13_CI_CD_And_Registry.md                 # Docker Hub, GHCR, GitHub Actions
     ├── 14_Production_Best_Practices.md          # Multi-stage, health checks, logging
     ├── 15_Security.md                           # Non-root, scanning, network isolation
+    ├── Docker_Command_Reference.md              # Every Docker command for data engineers
+    ├── Docker_Practice_And_Interview_Prep.md    # Hands-on exercises & interview questions
     └── projects/
         ├── 01_python_etl_pipeline/              # CSV → Python → PostgreSQL
         ├── 02_multi_service_pipeline/           # Source DB → ETL → Warehouse

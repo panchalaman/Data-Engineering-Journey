@@ -57,6 +57,14 @@ Every data engineering job posting lists Docker as a required or preferred skill
 | 02 | [Multi-Service Pipeline](projects/02_multi_service_pipeline/) | Advanced | Source DB → ETL → Warehouse with star schema |
 | 03 | [Airflow Pipeline](projects/03_airflow_pipeline/) | Advanced | Full Airflow setup with DAGs, multiple databases, quality checks |
 
+### [Docker Command Reference](Docker_Command_Reference.md)
+
+Every Docker command a data engineer actually uses — organized by frequency, with flags, examples, and a cheat sheet at the end.
+
+### [Docker Practice & Interview Prep](Docker_Practice_And_Interview_Prep.md)
+
+Hands-on exercises and interview questions covering containers, images, Dockerfiles, volumes, networking, Compose, and real-world data engineering scenarios. Organized from beginner to advanced — great for interview prep or solidifying your Docker skills.
+
 ## How to Use This Course
 
 **If you're completely new to Docker:** Start at Lesson 01 and work through sequentially. Each lesson builds on the previous one.
