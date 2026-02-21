@@ -31,6 +31,10 @@ Plus a [**SQL Lessons**](./Data-Engineering/SQL_COURSE/Lessons/) — a complete 
 
 Linux fundamentals and command-line skills, including a dedicated [**Learn Git**](./Learn%20Linux/Learn%20Git/) section for version control.
 
+### [Learn Docker](./Learn%20Docker/)
+
+A comprehensive Docker course built specifically for data engineering — 15 lessons covering containers, images, Compose, networking, volumes, databases, Airflow, CI/CD, production best practices, and security. Includes 3 hands-on projects and practice problems at every level.
+
 ---
 
 ## Repository Structure
@@ -97,27 +101,49 @@ Data-Engineering-Journey/
 │           └── Resources/
 │               └── images/                        # Architecture diagrams & schemas
 │
-└── Learn Linux/
-    ├── README.md                                ← Linux fundamentals
-    ├── 01_Basics/
-    │   ├── navigation.md                        # File system navigation
-    │   ├── file_operations.md                   # Copy, move, remove, symlinks
-    │   └── viewing_files.md                     # cat, head, tail, wc, diff
-    ├── 02_Working_with_Data/
-    │   ├── grep_and_search.md                   # grep, find, pattern matching
-    │   ├── text_processing.md                   # awk, sed, cut, sort, uniq
-    │   └── piping_and_redirection.md            # Pipes, redirection, tee
-    ├── 03_System/
-    │   ├── permissions.md                       # chmod, chown, SSH, users
-    │   └── processes_and_jobs.md                # ps, kill, cron, disk management
-    ├── 04_Shell_Scripting/
-    │   ├── basics.sh                            # Variables, loops, conditionals
-    │   ├── pipeline_automation.sh               # ETL pipeline script template
-    │   └── error_handling.sh                    # Logging, retries, traps
-    ├── 05_Environment/
-    │   └── setup.md                             # Packages, PATH, .zshrc, aliases
-    └── Learn Git/
-        └── README.md                            # Git basics & branching
+├── Learn Linux/
+│   ├── README.md                                ← Linux fundamentals
+│   ├── 01_Basics/
+│   │   ├── navigation.md                        # File system navigation
+│   │   ├── file_operations.md                   # Copy, move, remove, symlinks
+│   │   └── viewing_files.md                     # cat, head, tail, wc, diff
+│   ├── 02_Working_with_Data/
+│   │   ├── grep_and_search.md                   # grep, find, pattern matching
+│   │   ├── text_processing.md                   # awk, sed, cut, sort, uniq
+│   │   └── piping_and_redirection.md            # Pipes, redirection, tee
+│   ├── 03_System/
+│   │   ├── permissions.md                       # chmod, chown, SSH, users
+│   │   └── processes_and_jobs.md                # ps, kill, cron, disk management
+│   ├── 04_Shell_Scripting/
+│   │   ├── basics.sh                            # Variables, loops, conditionals
+│   │   ├── pipeline_automation.sh               # ETL pipeline script template
+│   │   └── error_handling.sh                    # Logging, retries, traps
+│   ├── 05_Environment/
+│   │   └── setup.md                             # Packages, PATH, .zshrc, aliases
+│   └── Learn Git/
+│       └── README.md                            # Git basics & branching
+│
+└── Learn Docker/
+    ├── README.md                                ← Docker for Data Engineering
+    ├── 01_What_Is_Docker.md                     # Why Docker, containers vs VMs
+    ├── 02_Installation_And_Setup.md             # Install on macOS/Linux/Windows
+    ├── 03_Your_First_Container.md               # docker run, stop, rm, exec, logs
+    ├── 04_Docker_Images.md                      # Layers, tags, registries, variants
+    ├── 05_Building_Images.md                    # Dockerfile, multi-stage builds
+    ├── 06_Volumes_And_Storage.md                # Named volumes, bind mounts, persistence
+    ├── 07_Networking.md                         # Bridge networks, DNS, port mapping
+    ├── 08_Docker_Compose.md                     # Multi-container apps, services
+    ├── 09_Environment_And_Secrets.md            # ENV, ARG, .env files, secrets
+    ├── 10_Data_Engineering_Pipelines.md         # Containerized ETL, project structure
+    ├── 11_Databases_In_Docker.md                # PostgreSQL, DuckDB, Redis, backups
+    ├── 12_Airflow_With_Docker.md                # Airflow setup, DAGs, scheduling
+    ├── 13_CI_CD_And_Registry.md                 # Docker Hub, GHCR, GitHub Actions
+    ├── 14_Production_Best_Practices.md          # Multi-stage, health checks, logging
+    ├── 15_Security.md                           # Non-root, scanning, network isolation
+    └── projects/
+        ├── 01_python_etl_pipeline/              # CSV → Python → PostgreSQL
+        ├── 02_multi_service_pipeline/           # Source DB → ETL → Warehouse
+        └── 03_airflow_pipeline/                 # Full Airflow orchestration
 ```
 
 ---
@@ -217,6 +243,7 @@ This was a self-initiated bonus project. The raw data had skills stored as `['SQ
 | **Google Cloud Storage** | Source data hosting and cloud extraction |
 | **Git / GitHub** | Version-controlled pipeline scripts |
 | **VS Code** | SQL development environment |
+| **Docker / Docker Compose** | Containerized pipelines, multi-service setups, CI/CD |
 | **Shell (Bash/Zsh)** | Pipeline automation and orchestration |
 
 ---
