@@ -16,28 +16,30 @@ Every lesson uses a real dataset of tech job postings and is designed to run in 
 
 ## Projects
 
-### [1_EDA/](SQL_COURSE/Projects/1_EDA) - Exploratory Data Analysis
+These are the hands-on projects I built while learning SQL for data engineering. Each one tackles a different part of the DE workflow — from exploratory analysis to full warehouse builds with incremental updates.
+
+### [1_EDA/](SQL_COURSE/Projects/1_EDA) — Job Market EDA
 ![EDA Project Overview](SQL_COURSE/Projects/Resources/images/1_1_Project1_EDA.png)
 
-> SQL-driven analysis of data engineer job market trends using advanced querying techniques.
+Three analytical queries that answer the questions I had when planning what to learn: which skills are most in-demand, which pay the best, and which give the best return on investment. Includes a custom scoring formula using `LN()` to balance demand against salary.
 
-**Skills**: Complex joins, aggregations, analytical functions, data quality validation
+**Techniques**: Multi-table JOINs, MEDIAN aggregation, HAVING filters, LN() transformation, composite scoring
 
-### [2_WH_Mart_Build/](SQL_COURSE/Projects/2_WH_Mart_Build) - Data Pipeline - Data Warehouse & Mart
+### [2_WH_Mart_Build/](SQL_COURSE/Projects/2_WH_Mart_Build) — Data Warehouse + Mart Pipeline
 ![Data Pipeline Architecture](SQL_COURSE/Projects/Resources/images/1_2_Project2_Data_Pipeline.png)
 
-> End-to-end ETL pipeline transforming raw CSV files into a star schema data warehouse and analytical data marts.
+End-to-end pipeline that extracts CSVs from Google Cloud Storage, loads them into a star schema warehouse, then builds four specialized data marts (flat, skills demand, priority roles, company hiring). The priority mart demonstrates incremental updates with MERGE.
 
-**Skills**: Dimensional modeling, ETL pipeline development, data mart architecture, production practices
+**Techniques**: Star schema DDL, GCS extraction, MERGE upserts, additive measures, bridge tables, schema separation
 
-### [3_Flat_to_WH_Build/](SQL_COURSE/Projects/3_Flat_to_WH_Build) - Flat to Warehouse Build
+### [3_Flat_to_WH_Build/](SQL_COURSE/Projects/3_Flat_to_WH_Build) — Flat CSV to Star Schema
 
-> SQL-driven transformation of flat job posting data into a normalized star schema using DuckDB.
+Self-directed project (not from the course). Takes a flat CSV with skills embedded as Python-style list strings and transforms it into a normalized star schema. The main challenge was parsing `['SQL', 'Python', 'AWS']` into relational rows.
 
-**Skills**: Data transformation, star schema design, ETL pipeline development, production practices
+**Techniques**: String parsing (REPLACE/SPLIT/UNNEST), surrogate keys with ROW_NUMBER(), bridge table population, FK constraints
 
-### [4_Priority_Jobs_Pipeline/](../Data-types/4_Priority_Jobs_Pipeline) - Priority Jobs Snapshot Pipeline
+### [4_Priority_Jobs_Pipeline/](../Data-types/4_Priority_Jobs_Pipeline) — Priority Jobs Snapshot Pipeline
 
-> Incremental ETL pipeline that tracks job postings by role priority with upsert patterns and schema evolution.
+Incremental ETL pipeline that tracks job postings by role priority with upsert patterns and schema evolution.
 
-**Skills**: DDL/DML, INSERT INTO vs CTAS, upsert pattern, staging tables, ALTER TABLE, data types, idempotency
+**Techniques**: DDL/DML, INSERT INTO vs CTAS, upsert pattern, staging tables, ALTER TABLE, data types, idempotency

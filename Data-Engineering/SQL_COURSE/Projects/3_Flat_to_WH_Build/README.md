@@ -1,126 +1,120 @@
-# 🏭 Flat to Warehouse Build: Star Schema Transformation
+# Flat to Warehouse Build: Star Schema from Raw CSV
 
-An ETL pipeline that transforms flat job posting data (single CSV with embedded skill lists) into a normalized star schema using DuckDB—demonstrating **data transformation, dimensional modeling, and production-ready ETL practices**.
+This project takes a single flat CSV file — where skills are crammed into Python-style list strings like `['SQL', 'Python', 'AWS']` — and transforms it into a proper normalized star schema. It's the kind of messy-to-clean transformation that data engineers deal with constantly, and I wanted to build the whole pipeline from scratch.
 
-*Bonus project — not covered in the course video*
-
-![Data Warehouse Schema](../../Resources/images/1_2_Data_Warehouse.png)
-
----
-
-## 🧾 Executive Summary (For Hiring Managers)
-
-- ✅ **Project scope:** Built an **ETL pipeline** that transforms a flat CSV into a star schema warehouse
-- ✅ **Data modeling:** Designed **fact table, dimensions, and bridge table** to normalize many-to-many job–skill relationships
-- ✅ **Data transformation:** Implemented **string parsing** to convert Python list format `['skill1', 'skill2']` into normalized relational rows
-- ✅ **ETL development:** Automated **extract, transform, load** with idempotent scripts and verification queries
-
-If you only have a minute, review these:
-
-1. [`01_create_tables.sql`](./01_create_tables.sql) – Star schema DDL
-2. [`02_populate_company_dim.sql`](./02_populate_company_dim.sql) – Company dimension with deduplication
-3. [`03_populate_skills_dim.sql`](./03_populate_skills_dim.sql) – Skills dimension from parsed lists
-4. [`04_populate_fact_table.sql`](./04_populate_fact_table.sql) – Fact table population
-5. [`05_populate_bridge_table.sql`](./05_populate_bridge_table.sql) – Many-to-many job–skill bridge
-
----
-
-## 🧩 Problem & Context
-
-Job posting data often arrives as a **flat CSV** with skills stored as a Python-style list string (e.g., `['SQL', 'Python', 'AWS']`)—not suitable for analytical queries or dimensional modeling.
-
-**Challenge:** Analysts need to join on skills, aggregate by skill demand, and analyze salary by skill. A flat table with embedded lists prevents efficient querying and violates normalization principles.
-
-**Solution:** ETL pipeline that loads the flat CSV, parses skill lists into normalized rows, and builds a star schema with `job_postings_fact`, `company_dim`, `skills_dim`, and `skills_job_dim` (bridge table). The result mirrors the warehouse structure used in Projects 1 and 2.
-
----
-
-## 🧰 Tech Stack
-
-- 🐤 **Database:** DuckDB (file-based OLAP with GCS integration via `httpfs`)
-- 🧮 **Language:** SQL (DDL for schema, DML for transformation and loading)
-- 📊 **Data Model:** Star schema (fact + dimensions + bridge table)
-- 🛠️ **Development:** VS Code for SQL editing + Terminal for DuckDB CLI
-- 🔧 **Automation:** Master script `build_warehouse.sql` for full pipeline execution
-- 📦 **Version Control:** Git/GitHub for versioned scripts
-- ☁️ **Storage:** Google Cloud Storage (`job_postings_flat.csv`)
-
----
-
-## 📂 Repository Structure
-
-```text
-3_Flat_to_WH_Build/
-├── 00_load_data.sql            # Data import from Google Cloud
-├── 01_create_tables.sql        # Star schema table creation
-├── 02_populate_company_dim.sql # Company dimension population
-├── 03_populate_skills_dim.sql  # Skills dimension (parsed from lists)
-├── 04_populate_fact_table.sql  # Fact table population
-├── 05_populate_bridge_table.sql# Bridge table (job–skill many-to-many)
-├── 06_verify_schema.sql        # Schema verification queries
-├── build_warehouse.sql         # Master build script
-├── build_warehouse.sh          # Shell script with error handling
-└── README.md                   # You are here
-```
-
----
-
-## 🏗️ Pipeline Overview
-
-### Data Source
-
-- **URL:** `https://storage.googleapis.com/sql_de/job_postings_flat.csv`
-- **Format:** Flat CSV with job details, company info, and skills as Python list strings
-
-### Star Schema Output
+This was a bonus project I did on my own outside the course material. The goal was to prove I could take genuinely messy source data and design a warehouse around it, not just load pre-formatted CSVs into tables someone else designed.
 
 ![Data Warehouse Schema](../../Resources/images/1_2_Data_Warehouse.png)
 
-- **Fact Table:** `job_postings_fact` – Central table with job metrics and foreign keys
-- **Dimension Tables:** `company_dim`, `skills_dim` – Lookup tables with surrogate keys
-- **Bridge Table:** `skills_job_dim` – Many-to-many relationship between jobs and skills
+---
 
-### Quick Start
+## The Problem
 
-**Option 1: Master script**
+The source CSV has everything jammed into one table — company names repeated thousands of times, skills stored as embedded Python lists inside a VARCHAR column. You can't `JOIN ON` a string like `['SQL', 'Python']`. You can't deduplicate companies without extracting them. You can't do proper skill-level analysis without normalizing those lists into individual rows.
+
+The flat file is fine for a quick look in Excel. It's terrible for analytical queries.
+
+---
+
+## What the Pipeline Does
+
+Seven scripts run in sequence to transform the flat CSV into a four-table star schema:
+
+| Step | File | What it does |
+|------|------|-------------|
+| 0 | [00_load_data.sql](./00_load_data.sql) | Pulls the CSV from GCS into a landing table — loose types, no normalization |
+| 1 | [01_create_tables.sql](./01_create_tables.sql) | Creates the target star schema (2 dims + 1 fact + 1 bridge) with FK constraints |
+| 2 | [02_populate_company_dim.sql](./02_populate_company_dim.sql) | Extracts unique companies, assigns surrogate keys with `ROW_NUMBER()` |
+| 3 | [03_populate_skills_dim.sql](./03_populate_skills_dim.sql) | Parses `['skill1', 'skill2']` strings into normalized rows via REPLACE + SPLIT + UNNEST |
+| 4 | [04_populate_fact_table.sql](./04_populate_fact_table.sql) | Loads fact table, replaces company_name with company_id via LEFT JOIN |
+| 5 | [05_populate_bridge_table.sql](./05_populate_bridge_table.sql) | Resolves the many-to-many job-to-skill relationship |
+| 6 | [06_verify_schema.sql](./06_verify_schema.sql) | Record counts, sample data, and an end-to-end JOIN test |
+
+---
+
+## Quick Start
+
 ```bash
+# Option 1: Master SQL script (runs all 7 steps)
 duckdb -c ".read build_warehouse.sql"
-```
 
-**Option 2: Shell script**
-```bash
+# Option 2: Shell script with error handling
 chmod +x build_warehouse.sh
 ./build_warehouse.sh
 ```
 
 ---
 
-## 💻 Data Engineering Skills Demonstrated
+## The Interesting Part: Parsing Embedded Lists
 
-### Data Transformation
+The hardest step was Step 3. The CSV stores skills like this:
 
-- **String Parsing:** Converting Python list format `['skill1', 'skill2']` to normalized rows via `UNNEST` and string functions
-- **Type Casting:** DuckDB data types (`VARCHAR`, `INTEGER`, `DOUBLE`, etc.) for schema integrity
-- **Deduplication:** Extracting unique companies and skills with proper surrogate key generation
+```
+['SQL', 'Python', 'AWS']
+```
 
-### Dimensional Modeling
+That's a Python list literal stored as a plain string. To normalize it, I had to:
 
-- **Star Schema Design:** Fact table with dimension and bridge tables
-- **Surrogate Keys:** `ROW_NUMBER()` for generating sequential IDs
-- **Bridge Table:** Many-to-many relationship handling for job–skill mappings
-- **Referential Integrity:** Foreign key constraints between fact, dimensions, and bridge
+1. Strip the brackets: `REPLACE(REPLACE(job_skills, '[', ''), ']', '')`
+2. Strip the quotes: `REPLACE(..., '''', '')`
+3. Split on commas: `STRING_SPLIT(..., ',')`
+4. Flatten to rows: `UNNEST(...)`
+5. Trim whitespace: `TRIM(skill)`
+6. Deduplicate: `SELECT DISTINCT`
 
-### SQL Techniques
+Each step peels off one layer of the mess. The result is a clean `skills_dim` table with one row per unique skill and a surrogate key.
 
-- **DDL:** `CREATE TABLE`, `DROP TABLE IF EXISTS` for idempotent schema creation
-- **DML:** `INSERT INTO ... SELECT` with explicit column mapping
-- **CTEs:** Common Table Expressions for complex transformations
-- **Window Functions:** `ROW_NUMBER()` for surrogate key generation
-- **UNNEST:** Flattening array-like skill data into relational rows
+---
 
-### Production Practices
+## Project Structure
 
-- **Idempotency:** Scripts safely rerunnable without side effects
-- **Verification:** `06_verify_schema.sql` for record count validation
-- **Orchestration:** Master script for automated end-to-end execution
-- **Error Handling:** Shell script with structured execution flow
+```
+3_Flat_to_WH_Build/
+├── 00_load_data.sql             # Landing zone — raw CSV into DuckDB
+├── 01_create_tables.sql         # Star schema DDL with FK constraints
+├── 02_populate_company_dim.sql  # Dedup companies + surrogate keys
+├── 03_populate_skills_dim.sql   # Parse Python list strings into rows
+├── 04_populate_fact_table.sql   # Load fact table with company_id lookup
+├── 05_populate_bridge_table.sql # Many-to-many job-skill resolution
+├── 06_verify_schema.sql         # Validation queries
+├── build_warehouse.sql          # Master SQL orchestration
+├── build_warehouse.sh           # Shell wrapper with set -e
+└── README.md
+```
+
+---
+
+## Tech Stack
+
+| Tool | Purpose |
+|------|---------|
+| DuckDB | OLAP engine with `httpfs` for direct GCS reads, no server needed |
+| SQL | All ETL logic — DDL, DML, string parsing, window functions |
+| Star schema | Fact + dimension + bridge for normalized dimensional model |
+| Google Cloud Storage | Source CSV hosted publicly |
+| Shell (bash) | Build script with error handling via `set -e` |
+| Git/GitHub | Version control |
+
+---
+
+## What I Learned
+
+**On data transformation:** The skills column was the real challenge. It looked like JSON but wasn't — it was a Python `repr()` string. I couldn't use `JSON_EXTRACT` because single quotes aren't valid JSON. The REPLACE + SPLIT + UNNEST chain was ugly but it works, and I suspect this kind of "parse whatever format the source team gave you" work is 80% of real data engineering.
+
+**On surrogate keys:** Using `ROW_NUMBER() OVER (ORDER BY ...)` gives deterministic, sequential IDs. The ORDER BY makes the assignment repeatable — same input always produces the same keys. I used this for both `company_dim` and `skills_dim`.
+
+**On load order:** Dimensions must be populated before the fact table (foreign keys won't validate otherwise). The bridge table comes last because it references both the fact table and the skills dimension.
+
+**On the bridge table challenge:** Step 5 was tricky because the landing table and the fact table don't share a natural key. I had to join on `job_title + job_posted_date` to link them, then re-parse the skills column to resolve skill names back to skill_ids. Not elegant, but it maintains referential integrity.
+
+---
+
+## SQL Techniques Used
+
+- **String parsing** — `REPLACE`, `STRING_SPLIT`, `UNNEST`, `TRIM` for embedded list extraction
+- **Window functions** — `ROW_NUMBER()` for surrogate key generation
+- **CTEs** — Multi-step transforms for skill parsing and bridge resolution
+- **DDL** — `CREATE TABLE` with primary keys, foreign keys, `UNIQUE NOT NULL` constraints
+- **DML** — `INSERT INTO ... SELECT` with explicit column mapping and JOIN-based lookups
+- **COPY** — `COPY ... FROM` with CSV format options for GCS data import
+- **Verification** — `UNION ALL` record counts, sample queries, cross-table JOIN tests

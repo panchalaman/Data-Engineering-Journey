@@ -1,164 +1,161 @@
-# 🏗️ Data Warehouse & Mart Build: Production ETL Pipeline
+# Data Warehouse and Mart Build
 
-An end-to-end data engineering pipeline that transforms raw CSV files from Google Cloud Storage into a normalized star schema data warehouse, then builds analytical data marts.
+An end-to-end pipeline that takes raw CSV files sitting in Google Cloud Storage and turns them into a proper star schema data warehouse, then builds four specialized data marts on top. This was my first time designing a full warehouse-to-mart architecture from scratch, and it taught me more about dimensional modeling than any textbook chapter could.
 
 ![Data Pipeline Architecture](../../Resources/images/1_2_Project2_Data_Pipeline.png)
 
 ---
 
-## 🧾 Executive Summary (For Hiring Managers)
+## Why I Built This
 
-- ✅ **Pipeline scope:** Built a complete **ETL pipeline** from raw CSVs to star schema warehouse to analytical marts  
-- ✅ **Data modeling:** Designed a **star schema** with fact tables, dimensions, and bridge tables for many-to-many relationships  
-- ✅ **ETL development:** Implemented **extract, transform, load** processes with idempotent operations and data quality checks  
-- ✅ **Mart architecture:** Created **specialized data marts** (flat, skills, priority) with additive measures and incremental update patterns
+Raw CSVs aren't a data warehouse. They can't enforce relationships, they duplicate data everywhere, and joining across flat files is a maintenance nightmare. I wanted to take messy source data and build something that a real analytics team could actually query against — with proper dimensions, foreign keys, and pre-aggregated marts for common business questions.
 
----
-
-## 🧩 Problem & Context
-
-Raw job posting data arrives as flat CSV files in Google Cloud Storage—not structured for analytical queries. Analysts need to answer:
-
-- Which skills are most in-demand over time?
-- What are hiring trends by company and location?
-- How do salary patterns vary by role and skill?
-
-**Challenge:** Data teams need a single source of truth system—a data warehouse—to enable consistent, reliable analysis across the organization. Additionally, specialized data marts are required to optimize resources by pre-aggregating data for specific business use cases, reducing query complexity and improving performance for common analytical patterns.
-
-**Solution:** End-to-end ETL pipeline that extracts CSVs from cloud storage, normalizes them into a star schema warehouse (separating facts from dimensions), and creates specialized data marts optimized for specific use cases (flat queries, skill demand analysis, priority role tracking).  
+The pipeline goes through three layers:
+1. **Extract + Load** — Pull CSVs from GCS into a normalized star schema
+2. **Transform into marts** — Build purpose-built analytical tables for different use cases
+3. **Incremental updates** — Show that this isn't a one-shot load; it can be maintained over time
 
 ---
 
-## 🧰 Tech Stack
+## Quick Start
 
-- 🐤 **Database:** DuckDB (file-based OLAP database with GCS integration via `httpfs`)  
-- 🧮 **Language:** SQL (DDL for schema design, DML for data loading and transformation)  
-- 📊 **Data Model:** Star schema (fact + dimension + bridge tables)  
-- 🛠️ **Development:** VS Code for SQL editing + Terminal for DuckDB CLI execution  
-- 🔧 **Automation:** Master SQL script for pipeline orchestration  
-- 📦 **Version Control:** Git/GitHub for versioned pipeline scripts  
-- ☁️ **Storage:** Google Cloud Storage for source CSV files  
+```bash
+# One command runs the entire pipeline (7 steps)
+duckdb dw_marts.duckdb -c ".read build_dw_marts.sql"
 
----
-
-## 📂 Repository Structure
-
-```text
-2_WH_Mart_Build/
-├── 01_create_tables_dw.sql        # Star schema DDL
-├── 02_load_schema_dw.sql          # GCS data extraction & loading
-├── 03_create_flat_mart.sql        # Denormalized flat mart
-├── 04_create_skills_mart.sql      # Skills demand mart
-├── 05_create_priority_mart.sql    # Priority roles mart
-├── 06_update_priority_mart.sql    # Priority mart incremental update (MERGE)
-├── 07_create_company_mart.sql     # Company hiring mart (optional)
-├── build_dw_marts.sql             # Master SQL build script
-└── README.md                       # You are here
+# Or with MotherDuck
+duckdb "md:dw_marts" -c ".read build_dw_marts.sql"
 ```
 
 ---
 
-## 🏗️ Pipeline Architecture
-
+## Pipeline Architecture
 
 ![Data Pipeline Architecture](../../Resources/images/1_2_Project2_Data_Pipeline.png)
 
-The pipeline transforms job posting CSVs from Google Cloud Storage into a normalized star schema data warehouse, then builds specialized analytical data marts. BI tools (Excel, Power BI, Tableau, Python) consume from both the warehouse and marts.
+CSVs from Google Cloud Storage flow into a star schema warehouse. From there, four marts serve different analytical needs. BI tools (Excel, Power BI, Tableau, Python) can consume from either the warehouse directly or from the pre-built marts.
 
-### Data Warehouse
-
-The data warehouse implements a star schema with `company_dim`, `skills_dim`, `job_postings_fact`, and `skills_job_dim` tables.
+### Layer 1: Star Schema Warehouse
 
 ![Data Warehouse Schema](../../Resources/images/1_2_Data_Warehouse.png)
 
-- **SQL Files:**
-  - [`01_create_tables_dw.sql`](./01_create_tables_dw.sql) – Defines star schema with 4 core tables
-  - [`02_load_schema_dw.sql`](./02_load_schema_dw.sql) – Extracts CSVs from GCS and loads into warehouse tables
-- **Purpose:** Star schema serving as single source of truth for analytical queries
-- **Grain:** One row per job posting in the fact table (`job_postings_fact`)
+The foundation. Four tables that normalize the raw data into proper dimensional form:
 
-### Flat Mart
+| File | What it does |
+|------|-------------|
+| [01_create_tables_dw.sql](./01_create_tables_dw.sql) | DDL for the star schema — 2 dims, 1 fact, 1 bridge table with FK constraints |
+| [02_load_schema_dw.sql](./02_load_schema_dw.sql) | Loads CSVs from GCS via `read_csv()`, dims first then fact then bridge (FK order matters) |
 
-Denormalized table with all dimensions for ad-hoc queries.
+**Grain:** One row per job posting in `job_postings_fact`
+
+### Layer 2: Analytical Marts
+
+#### Flat Mart — for ad-hoc queries
 
 ![Flat Mart Schema](../../Resources/images/1_2_Flat_Mart.png)
 
-- **SQL File:** [`03_create_flat_mart.sql`](./03_create_flat_mart.sql) – Builds denormalized table with all dimensions joined
-- **Purpose:** Denormalized table for quick ad-hoc queries
-- **Grain:** One row per job posting with all dimensions joined
+| File | What it does |
+|------|-------------|
+| [03_create_flat_mart.sql](./03_create_flat_mart.sql) | Denormalizes the star schema back into a single wide table with `ARRAY_AGG` for skills |
 
-### Skills Mart
+Sometimes analysts just want one table they can throw into Excel without thinking about joins. This mart pre-joins everything and packs skills into an array-of-structs column. It's the "I just need quick answers" table.
 
-Time-series skill demand analysis with additive measures.
+#### Skills Mart — trend analysis over time
 
 ![Skills Mart Schema](../../Resources/images/1_2_Skills_Mart.png)
 
-- **SQL File:** [`04_create_skills_mart.sql`](./04_create_skills_mart.sql) – Builds time-series skill demand mart
-- **Purpose:** Time-series analysis of skill demand over time with additive measures
-- **Grain:** `skill_id + month_start_date + job_title_short`
-- **Key Features:** All measures are additive (counts/sums) for safe re-aggregation
+| File | What it does |
+|------|-------------|
+| [04_create_skills_mart.sql](./04_create_skills_mart.sql) | Monthly skill demand with additive measures (counts, not ratios) |
 
-### Priority Mart
+**Grain:** `skill_id + month_start_date + job_title_short`
 
-Priority role tracking with incremental updates using MERGE operations.
+All measures are additive — posting counts, remote counts, insurance counts. This means you can roll up to quarter or year without breaking the math. I learned that putting ratios in a fact table is a common modeling mistake because you can't re-aggregate them correctly.
+
+#### Priority Mart — role tracking with incremental updates
 
 ![Priority Mart Schema](../../Resources/images/1_2_Priority_Mart.png)
 
-- **SQL Files:**
-  - [`05_create_priority_mart.sql`](./05_create_priority_mart.sql) – Initial build of priority roles and jobs snapshot
-  - [`06_update_priority_mart.sql`](./06_update_priority_mart.sql) – **Incremental update using MERGE** (upsert pattern)
-- **Purpose:** Track priority roles and job snapshots with incremental update capabilities
-- **Grain:** One row per job posting with priority level assignment
-- **Key Features:** **MERGE operations for incremental updates** - demonstrates production-ready upsert patterns (INSERT, UPDATE, DELETE in single statement)
+| File | What it does |
+|------|-------------|
+| [05_create_priority_mart.sql](./05_create_priority_mart.sql) | Initial snapshot — config table defines which roles matter and at what priority |
+| [06_update_priority_mart.sql](./06_update_priority_mart.sql) | Incremental refresh using `MERGE INTO` with all three clauses |
 
-### Company Mart (Optional)
+This is where it gets interesting. The MERGE operation handles inserts (new jobs), updates (priority changes), and deletes (jobs no longer matching) — all in a single statement. This is how production pipelines handle delta loads without full rebuilds.
 
-Company hiring trends by role, location, and month.
+#### Company Mart — hiring intelligence (bonus)
 
 ![Company Mart Schema](../../Resources/images/1_2_Company_Mart.png)
 
-- **SQL File:** [`07_create_company_mart.sql`](./07_create_company_mart.sql) – Builds company hiring trends mart (optional)
-- **Purpose:** Company hiring trends analysis by role, location, and month
-- **Grain:** `company_id + job_title_short_id + location_id + month_start_date`
-- **Key Features:** Bridge tables for many-to-many relationships (company-location, job title hierarchies)
-- **Note:** This mart is optional and can be skipped if not needed
+| File | What it does |
+|------|-------------|
+| [07_create_company_mart.sql](./07_create_company_mart.sql) | 5 dimensions, 2 bridge tables, 1 monthly fact table |
+
+The most complex mart in the pipeline. It tracks company hiring patterns by role, location, and month. Pre-computed shares (remote %, insurance %, no-degree %) let analysts compare companies without re-calculating from raw data every time. The bridge tables handle the many-to-many relationships between companies and locations, and between job title categories and specific job titles.
+
+### Orchestration
+
+| File | What it does |
+|------|-------------|
+| [build_dw_marts.sql](./build_dw_marts.sql) | Master script — runs all 7 steps in sequence with `.read` |
 
 ---
 
-## 💻 Data Engineering Skills Demonstrated
+## Project Structure
 
-### ETL Pipeline Development
+```
+2_WH_Mart_Build/
+├── 01_create_tables_dw.sql        # Star schema DDL (dims → fact → bridge)
+├── 02_load_schema_dw.sql          # Extract CSVs from GCS, load in FK order
+├── 03_create_flat_mart.sql        # Denormalized flat table for ad-hoc queries
+├── 04_create_skills_mart.sql      # Monthly skill demand with additive measures
+├── 05_create_priority_mart.sql    # Config-driven priority role snapshot
+├── 06_update_priority_mart.sql    # Incremental MERGE (insert/update/delete)
+├── 07_create_company_mart.sql     # Company hiring trends mart (bonus)
+├── build_dw_marts.sql             # Master orchestration script
+└── README.md
+```
 
-- **Extract:** Direct CSV loading from Google Cloud Storage using DuckDB's `httpfs` extension  
-- **Transform:** Data normalization, type conversion (`CAST`, `DATE_TRUNC`), and quality filtering  
-- **Load:** Idempotent table creation with `DROP TABLE IF EXISTS` patterns  
-- **Incremental Updates:** MERGE operations for upsert patterns (INSERT, UPDATE, DELETE in single statement)  
-- **Orchestration:** Master SQL script (`build_dw_marts.sql`) for automated pipeline execution  
+---
 
-### Dimensional Modeling
+## Tech Stack
 
-- **Star Schema Design:** Fact table (`job_postings_fact`) with dimension tables (`company_dim`, `skills_dim`)  
-- **Bridge Tables:** Many-to-many relationship handling (`skills_job_dim`, `bridge_company_location`, `bridge_job_title`)  
-- **Grain Definition:** Proper fact table granularity (skill+month, company+title+location+month)  
-- **Additive Measures:** Counts and sums that can be safely re-aggregated at any level  
-- **Surrogate Keys:** Sequential ID generation using CTEs with self-joins (optional company_mart build only)  
+| Tool | Purpose |
+|------|---------|
+| DuckDB | File-based OLAP engine with `httpfs` for direct GCS reads |
+| SQL | DDL for schemas, DML for ETL, MERGE for incremental loads |
+| Star schema | Fact + dimension + bridge tables for clean dimensional modeling |
+| Google Cloud Storage | Source CSV files hosted publicly |
+| VS Code + Terminal | Development and execution |
+| Git/GitHub | Version control for pipeline scripts |
 
+---
 
+## What I Learned Building This
 
-### SQL Advanced Techniques
+### On dimensional modeling
+- Drop order matters — you can't drop a dimension while a fact table still references it via FK. I learned this the hard way.
+- Bridge tables are how you solve many-to-many (jobs have multiple skills, companies hire in multiple locations). Without them, you either duplicate fact rows or lose data.
+- Additive measures (counts, sums) in fact tables are safe to roll up. Ratios and averages are not — compute those at query time.
 
-- **DDL Operations:** `CREATE TABLE`, `DROP TABLE`, `CREATE SCHEMA` for schema management  
-- **DML Operations:** `INSERT INTO ... SELECT` with explicit column mapping from CSV sources  
-- **MERGE Operations:** Incremental updates using `MERGE INTO` with `WHEN MATCHED`, `WHEN NOT MATCHED`, and `WHEN NOT MATCHED BY SOURCE` clauses for production-ready upsert patterns  
-- **CTEs:** Common Table Expressions for complex transformations and boolean flag conversions  
-- **Date Functions:** `DATE_TRUNC('month')`, `EXTRACT(quarter)` for temporal dimension creation  
-- **String Functions:** `STRING_AGG` for concatenation, `REPLACE` for data cleaning  
-- **Boolean Logic:** `CASE WHEN` conversions for aggregating flags (remote, health insurance, no degree)  
+### On ETL patterns
+- Load order is the inverse of drop order: dims first, then fact, then bridge. FKs won't validate otherwise.
+- Idempotency isn't optional. Every script uses `DROP IF EXISTS` or `CREATE OR REPLACE` so you can safely re-run the whole pipeline.
+- MERGE is powerful — one statement handles inserts, updates, and deletes. But the `IS DISTINCT FROM` operator (not `!=`) is critical because it handles NULLs correctly.
 
-### Data Quality & Production Practices
+### On mart design
+- Different users need different shapes of data. Analysts want flat tables. Time-series dashboards want pre-aggregated monthly grains. The warehouse is the single source of truth; marts are optimized views of it.
+- Schema separation (`flat_mart`, `skills_mart`, `priority_mart`, `company_mart`) keeps things clean and lets you rebuild one mart without touching others.
 
-- **Idempotency:** All scripts safely rerunnable without side effects  
-- **Data Validation:** Verification queries at each pipeline step to ensure data integrity  
-- **Type Safety:** Proper data type definitions (`VARCHAR`, `INTEGER`, `DOUBLE`, `BOOLEAN`, `TIMESTAMP`)  
-- **Schema Organization:** Separate schemas (`flat_mart`, `skills_mart`, `priority_mart`, `company_mart`) for logical separation  
-- **Error Handling:** Structured script execution with clear error messages and progress reporting  
+---
+
+## SQL Techniques Used
+
+- **DDL** — `CREATE TABLE`, `CREATE SCHEMA`, `DROP ... CASCADE`, `PRAGMA` settings
+- **DML** — `INSERT INTO ... SELECT` with explicit column mapping, `read_csv()` for GCS extraction
+- **MERGE** — Full three-clause upsert: `WHEN MATCHED`, `WHEN NOT MATCHED`, `WHEN NOT MATCHED BY SOURCE`
+- **CTEs** — Boolean-to-integer conversion, complex multi-step transforms
+- **Aggregation** — `COUNT`, `MEDIAN`, `AVG`, `ARRAY_AGG` with `STRUCT_PACK`
+- **Date functions** — `DATE_TRUNC('month')`, `EXTRACT(quarter)` for temporal dimensions
+- **Window functions** — Surrogate key generation via self-join counting (company mart)
+- **Group operations** — `GROUP BY ALL` for DuckDB shorthand, `HAVING` for post-aggregate filtering

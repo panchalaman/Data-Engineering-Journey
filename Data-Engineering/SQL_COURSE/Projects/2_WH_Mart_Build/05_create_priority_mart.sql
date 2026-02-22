@@ -1,40 +1,58 @@
--- Step 5: Mart - Create priority roles mart (snapshot mart)
--- Run this after Step 4
--- This mart focuses on priority roles and job snapshots for targeted analysis
+-- =====================================================================
+-- 05_create_priority_mart.sql   |   Priority Roles Snapshot Mart
+-- =====================================================================
+-- Author:  Aman Panchal
+-- Step:    5 of 7
+--
+-- Goal:
+--   Create a focused mart for the roles I personally care about.
+--   Instead of querying across 700k+ postings every time, I define
+--   a small config table (priority_roles) with the job titles and
+--   priority levels that matter to me, then snapshot only those
+--   jobs.  This matters because it makes my daily "what's new in
+--   Data Engineering?" query near-instant.
+--
+-- What I learned:
+--   Using a config/dimension table (priority_roles) to drive which
+--   rows land in the snapshot is a pattern I see a lot in production
+--   pipelines.  It decouples the "what do I care about" question
+--   from the ETL logic.  When I want to add a new role, I just
+--   INSERT a row -- I don't touch the pipeline code.
+-- =====================================================================
 
--- Drop existing mart schema if it exists (for idempotency)
+-- Wipe and recreate for idempotency
 DROP SCHEMA IF EXISTS priority_mart CASCADE;
-
--- Step 1: Create the mart schema
 CREATE SCHEMA priority_mart;
 
--- Step 2: Create priority roles dimension table
--- This table defines priority levels for different job roles
-CREATE TABLE priority_mart.priority_roles (                          -- updated to use priority_mart schema & remove 'OR REPLACE'
+-- == Config table: which roles do I care about? =======================
+-- priority_lvl is arbitrary: 1 = top priority, higher = lower priority
+CREATE TABLE priority_mart.priority_roles (
   role_id      INTEGER PRIMARY KEY,
   role_name    VARCHAR,
   priority_lvl INTEGER
 );
 
-INSERT INTO priority_mart.priority_roles (role_id, role_name, priority_lvl)        -- updated to use priority_mart schema
+-- Seed with my initial set of target roles
+INSERT INTO priority_mart.priority_roles (role_id, role_name, priority_lvl)
 VALUES
   (1, 'Data Engineer',       2),
   (2, 'Senior Data Engineer', 1),
   (3, 'Software Engineer',   3);
 
--- Step 3: Create priority jobs snapshot table
--- This table contains a snapshot of jobs with their priority levels
-CREATE TABLE priority_mart.priority_jobs_snapshot (                      -- updated to use priority_mart schema
+-- == Snapshot table: filtered view of job postings ====================
+-- Only contains postings that match a priority role name
+CREATE TABLE priority_mart.priority_jobs_snapshot (
   job_id              INTEGER PRIMARY KEY,
   job_title_short     VARCHAR,
   company_name        VARCHAR,
   job_posted_date     TIMESTAMP,
   salary_year_avg     DOUBLE,
   priority_lvl        INTEGER,
-  updated_at          TIMESTAMP
+  updated_at          TIMESTAMP       -- tracks when this row was last written
 );
 
-INSERT INTO priority_mart.priority_jobs_snapshot (                                   -- updated to use priority_mart schema
+-- INNER JOIN on role_name ensures only priority-matched jobs make it in
+INSERT INTO priority_mart.priority_jobs_snapshot (
   job_id,
   job_title_short,
   company_name,
@@ -52,18 +70,17 @@ SELECT
   r.priority_lvl,
   CURRENT_TIMESTAMP
 FROM
-    job_postings_fact AS jpf                  -- updated to use main schema
-LEFT JOIN company_dim AS cd                   -- updated to use main schema
+    job_postings_fact AS jpf
+LEFT JOIN company_dim AS cd
     ON jpf.company_id = cd.company_id
-INNER JOIN priority_mart.priority_roles AS r       -- updated to use priority_mart schema
+INNER JOIN priority_mart.priority_roles AS r
     ON jpf.job_title_short = r.role_name;
 
--- Verify mart was created
+-- == Verification =====================================================
 SELECT 'Priority Roles Dimension' AS table_name, COUNT(*) as record_count FROM priority_mart.priority_roles
 UNION ALL
 SELECT 'Priority Jobs Snapshot', COUNT(*) FROM priority_mart.priority_jobs_snapshot;
 
--- Show sample data from each table
 SELECT '=== Priority Roles Dimension Sample ===' AS info;
 SELECT * FROM priority_mart.priority_roles;
 
@@ -73,6 +90,6 @@ SELECT
     COUNT(*) AS job_count,
     MIN(priority_lvl) AS priority_lvl,
     MIN(updated_at) AS updated_at
-FROM priority_mart.priority_jobs_snapshot          -- updated to use priority_mart schema
+FROM priority_mart.priority_jobs_snapshot
 GROUP BY job_title_short
 ORDER BY job_count DESC;

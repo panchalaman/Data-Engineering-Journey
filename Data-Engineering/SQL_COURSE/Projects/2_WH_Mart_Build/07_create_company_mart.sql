@@ -1,15 +1,41 @@
--- Step 7 (BONUS): Mart - Create company prospecting mart (dimensional mart)
--- Run this after Step 6 (Priority Mart)
+-- =====================================================================
+-- 07_create_company_mart.sql   |   Company Prospecting Mart (Bonus)
+-- =====================================================================
+-- Author:  Aman Panchal
+-- Step:    7 of 7
+--
+-- Goal:
+--   Build a fully normalized company-centric mart that answers
+--   questions like "Which companies hire the most Data Engineers?"
+--   and "What's the median salary by company and location?"
+--   This is the most complex mart in the pipeline -- it has five
+--   dimensions, two bridge tables, and one monthly fact table.
+--   I treat it as a bonus step because the earlier marts cover
+--   most analytical needs; this one is specifically for company
+--   prospecting and benchmarking.
+--
+-- What I learned:
+--   Generating surrogate keys without IDENTITY/SERIAL was an
+--   interesting exercise.  I used a self-join counting trick
+--   (COUNT rows that sort before the current row + 1) to build
+--   sequential IDs deterministically.  Bridge tables between
+--   company<->location and job_title_short<->job_title handle
+--   the many-to-many relationships cleanly.  The fact table
+--   stores shares (remote_share, health_insurance_share) as
+--   pre-aggregated ratios because, unlike the skills mart, this
+--   mart is already at a fine enough grain that re-aggregation
+--   across months still makes sense via weighted averages.
+-- =====================================================================
 
--- Drop existing mart schema if it exists (for idempotency)
+-- Wipe and recreate for idempotency
 DROP SCHEMA IF EXISTS company_mart CASCADE;
-
--- Step 1: Create the mart schema
 CREATE SCHEMA company_mart;
 
--- Step 2: Create dimension tables
+-- =====================================================================
+--  DIMENSIONS
+-- =====================================================================
 
--- 1. Company dimension
+-- == 1. Company dimension =============================================
 CREATE TABLE company_mart.dim_company (
     company_id INTEGER PRIMARY KEY,
     company_name VARCHAR
@@ -21,7 +47,8 @@ SELECT
     name AS company_name
 FROM company_dim;
 
--- 2. Job title short dimension (distinct job_title_short values with IDs)
+-- == 2a. Job title short dimension ====================================
+-- Distinct short titles with auto-generated surrogate keys
 CREATE TABLE company_mart.dim_job_title_short (
     job_title_short_id INTEGER PRIMARY KEY,
     job_title_short VARCHAR
@@ -34,6 +61,7 @@ WITH distinct_titles AS (
     WHERE job_title_short IS NOT NULL
 ),
 numbered_titles AS (
+    -- Self-join counting trick to generate sequential IDs without IDENTITY
     SELECT 
         t1.job_title_short,
         COUNT(t2.job_title_short) + 1 AS job_title_short_id
@@ -48,7 +76,8 @@ SELECT
 FROM numbered_titles
 ORDER BY job_title_short;
 
--- 2b. Job title dimension (distinct job_title values with IDs)
+-- == 2b. Job title dimension (full title) =============================
+-- Same surrogate-key approach for the full (verbose) job titles
 CREATE TABLE company_mart.dim_job_title (
     job_title_id INTEGER PRIMARY KEY,
     job_title VARCHAR
@@ -75,7 +104,8 @@ SELECT
 FROM numbered_titles
 ORDER BY job_title;
 
--- 3. Location dimension (unique location/country combinations)
+-- == 3. Location dimension ============================================
+-- Unique (country, location) pairs -- lets me slice by geography
 CREATE TABLE company_mart.dim_location (
     location_id INTEGER PRIMARY KEY,
     job_country VARCHAR,
@@ -109,7 +139,7 @@ SELECT
 FROM numbered_locations
 ORDER BY job_country, job_location;
 
--- 4. Month-level date dimension
+-- == 4. Date dimension (month grain) ==================================
 CREATE TABLE company_mart.dim_date_month (
     month_start_date DATE PRIMARY KEY,
     year INTEGER,
@@ -124,8 +154,13 @@ SELECT DISTINCT
 FROM job_postings_fact
 WHERE job_posted_date IS NOT NULL;
 
--- 5. Bridge table: Company to Location (many-to-many)
--- Shows which companies hire in which locations
+-- =====================================================================
+--  BRIDGE TABLES
+-- =====================================================================
+
+-- == 5. Company <-> Location bridge ===================================
+-- Resolves the many-to-many: one company can hire in many locations,
+-- and one location can have many companies
 CREATE TABLE company_mart.bridge_company_location (
     company_id INTEGER,
     location_id INTEGER,
@@ -144,8 +179,9 @@ INNER JOIN company_mart.dim_location loc
     AND jpf.job_location = loc.job_location
 WHERE jpf.company_id IS NOT NULL;
 
--- 6. Bridge table: Job Title Short to Job Title (many-to-many)
--- Shows all job_title variations for each job_title_short
+-- == 6. Job title short <-> Job title bridge ==========================
+-- Maps each short title to all its full-title variations
+-- (e.g. "Data Engineer" -> "Senior Data Engineer - Remote", etc.)
 CREATE TABLE company_mart.bridge_job_title (
     job_title_short_id INTEGER,
     job_title_id INTEGER,
@@ -166,8 +202,13 @@ INNER JOIN company_mart.dim_job_title djt
 WHERE jpf.job_title_short IS NOT NULL
     AND jpf.job_title IS NOT NULL;
 
--- Step 3: Create fact table - fact_company_hiring_monthly
--- Grain: company_id + job_title_short_id + job_country + posted_month
+-- =====================================================================
+--  FACT TABLE
+-- =====================================================================
+
+-- == Monthly company hiring fact ======================================
+-- Grain: company_id + job_title_short_id + job_country + month
+-- Measures include counts, salary stats, and share ratios
 CREATE TABLE company_mart.fact_company_hiring_monthly (
     company_id INTEGER,
     job_title_short_id INTEGER,
@@ -177,9 +218,9 @@ CREATE TABLE company_mart.fact_company_hiring_monthly (
     median_salary_year DOUBLE,
     min_salary_year DOUBLE,
     max_salary_year DOUBLE,
-    remote_share DOUBLE,
-    health_insurance_share DOUBLE,
-    no_degree_mention_share DOUBLE,
+    remote_share DOUBLE,               -- fraction of postings that are remote (0-1)
+    health_insurance_share DOUBLE,     -- fraction mentioning health insurance
+    no_degree_mention_share DOUBLE,    -- fraction not requiring a degree
     PRIMARY KEY (company_id, job_title_short_id, job_country, month_start_date),
     FOREIGN KEY (company_id) REFERENCES company_mart.dim_company(company_id),
     FOREIGN KEY (job_title_short_id) REFERENCES company_mart.dim_job_title_short(job_title_short_id),
@@ -200,13 +241,13 @@ INSERT INTO company_mart.fact_company_hiring_monthly (
     no_degree_mention_share
 )
 WITH job_postings_prepared AS (
+    -- CTE: prep booleans as floats so AVG gives us the share directly
     SELECT
         jpf.company_id,
         djs.job_title_short_id,
         jpf.job_country,
         DATE_TRUNC('month', jpf.job_posted_date)::DATE AS month_start_date,
         jpf.salary_year_avg,
-        -- Convert boolean flags to numeric values (1.0 or 0.0)
         CASE WHEN jpf.job_work_from_home = TRUE THEN 1.0 ELSE 0.0 END AS is_remote,
         CASE WHEN jpf.job_health_insurance = TRUE THEN 1.0 ELSE 0.0 END AS has_health_insurance,
         CASE WHEN jpf.job_no_degree_mention = TRUE THEN 1.0 ELSE 0.0 END AS no_degree_required
@@ -231,13 +272,9 @@ SELECT
     MIN(salary_year_avg) AS min_salary_year,
     MAX(salary_year_avg) AS max_salary_year,
 
-    -- ratio of remote-friendly postings in this group (0-1)
+    -- AVG of a 0/1 flag = share (proportion) in the range 0-1
     AVG(is_remote) AS remote_share,
-
-    -- ratio of postings that mention health insurance
     AVG(has_health_insurance) AS health_insurance_share,
-
-    -- ratio of postings where "no degree mentioned" is flagged
     AVG(no_degree_required) AS no_degree_mention_share
 
 FROM
@@ -248,7 +285,10 @@ GROUP BY
     job_country,
     month_start_date;
 
--- Verify mart was created
+-- =====================================================================
+--  VERIFICATION
+-- =====================================================================
+
 SELECT 'Company Dimension' AS table_name, COUNT(*) as record_count FROM company_mart.dim_company
 UNION ALL
 SELECT 'Job Title Short Dimension', COUNT(*) FROM company_mart.dim_job_title_short
@@ -265,7 +305,8 @@ SELECT 'Job Title Bridge', COUNT(*) FROM company_mart.bridge_job_title
 UNION ALL
 SELECT 'Company Hiring Fact', COUNT(*) FROM company_mart.fact_company_hiring_monthly;
 
--- Show sample data from each table
+-- == Sample data from each table ======================================
+
 SELECT '=== Company Dimension Sample ===' AS info;
 SELECT * FROM company_mart.dim_company LIMIT 5;
 

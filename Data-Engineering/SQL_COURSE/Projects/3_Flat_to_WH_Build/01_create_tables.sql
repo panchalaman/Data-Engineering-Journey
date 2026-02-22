@@ -1,19 +1,51 @@
--- Step 1: Create all tables for star schema
--- Run this first
+-- =============================================================
+-- Step 1: Create Star-Schema Tables
+-- =============================================================
+-- Author:  Aman Panchal
+-- Project: Flat-to-Warehouse Build (Project 3)
+--
+-- Goal:
+--   Define the empty skeleton of the star schema BEFORE any data
+--   goes in. Order matters here — dimension tables first, then the
+--   fact table, then the bridge table — because of foreign-key
+--   dependencies.
+--
+-- What I learned:
+--   The tricky part was realizing that skills_job_dim is a *bridge*
+--   table, not a regular dimension. A single job can require many
+--   skills, and a single skill appears in many jobs. That many-to-many
+--   relationship is exactly what the bridge table resolves.
+-- =============================================================
 
--- Create company_dim table
+-- -----------------------------------------------
+-- Dimension 1: Companies
+-- One row per unique company. The surrogate key
+-- (company_id) replaces the raw company_name string
+-- everywhere else in the schema.
+-- -----------------------------------------------
 CREATE TABLE company_dim (
     company_id INTEGER PRIMARY KEY,
     company_name VARCHAR UNIQUE NOT NULL
 );
 
--- Create skills_dim table
+-- -----------------------------------------------
+-- Dimension 2: Skills
+-- Same idea — one row per distinct skill so we can
+-- reference it by ID instead of repeating strings.
+-- -----------------------------------------------
 CREATE TABLE skills_dim (
     skill_id INTEGER PRIMARY KEY,
     skill VARCHAR UNIQUE NOT NULL
 );
 
--- Create job_postings_fact table (must be created before skills_job_dim)
+-- -----------------------------------------------
+-- Fact table: Job Postings
+-- The grain is one row per job posting. company_id
+-- is a foreign key into company_dim. I kept salary
+-- and metadata columns here because they describe
+-- the individual posting event.
+-- Must be created BEFORE the bridge table.
+-- -----------------------------------------------
 CREATE TABLE job_postings_fact (
     job_id INTEGER PRIMARY KEY,
     company_id INTEGER,
@@ -34,7 +66,11 @@ CREATE TABLE job_postings_fact (
     FOREIGN KEY (company_id) REFERENCES company_dim(company_id)
 );
 
--- Create skills_job_dim bridge table (after job_postings_fact exists)
+-- -----------------------------------------------
+-- Bridge table: Skills <-> Jobs  (many-to-many)
+-- Composite PK ensures no duplicate pairings.
+-- Both FKs point back to their parent tables.
+-- -----------------------------------------------
 CREATE TABLE skills_job_dim (
     skill_id INTEGER,
     job_id INTEGER,
@@ -43,8 +79,5 @@ CREATE TABLE skills_job_dim (
     FOREIGN KEY (job_id) REFERENCES job_postings_fact(job_id)
 );
 
--- Verify tables were created
+-- Quick check — I should see all four tables listed
 SHOW TABLES;
-
-
-

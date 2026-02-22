@@ -1,20 +1,41 @@
--- Step 6: Mart - Update priority roles mart (incremental update)
--- Run this after Step 5
--- This script demonstrates MERGE operations for incremental updates to the priority mart
+-- =====================================================================
+-- 06_update_priority_mart.sql   |   Incremental Merge into Priority Mart
+-- =====================================================================
+-- Author:  Aman Panchal
+-- Step:    6 of 7
+--
+-- Goal:
+--   Demonstrate how to incrementally update the priority mart
+--   without rebuilding it from scratch.  In a real pipeline this
+--   would run on a schedule (daily, hourly, etc.) and only touch
+--   rows that changed.  The MERGE statement is the workhorse here:
+--   it handles updates, inserts, AND deletes in a single atomic
+--   operation.
+--
+-- What I learned:
+--   MERGE INTO is incredibly powerful.  Before I learned it, I was
+--   doing DELETE + INSERT which is slower and not atomic.  The
+--   three clauses (MATCHED, NOT MATCHED, NOT MATCHED BY SOURCE)
+--   cover every case: changed rows get updated, new rows get
+--   inserted, and stale rows get deleted.  The IS DISTINCT FROM
+--   operator in the MATCHED clause is a nice touch -- it avoids
+--   unnecessary updates when nothing actually changed.
+-- =====================================================================
 
--- Step 1: Update existing priority role
--- Update Data Engineer priority level to 1
+-- == Step 1: Update an existing priority level ========================
+-- Scenario: I decided Data Engineer should be priority 1, not 2
 UPDATE priority_mart.priority_roles
 SET priority_lvl = 1
 WHERE role_name = 'Data Engineer';
 
--- Step 2: Insert new priority role
--- Add Data Scientist as a new priority role with level 2
+-- == Step 2: Add a new role to track ==================================
+-- Scenario: I now want to monitor Data Scientist postings too
 INSERT INTO priority_mart.priority_roles (role_id, role_name, priority_lvl)
 VALUES (4, 'Data Scientist', 2);
 
--- Step 3: Create temporary source table
--- This table contains the current state of priority jobs from the data warehouse
+-- == Step 3: Build the source snapshot (temp table) ===================
+-- This captures the current state of all priority-matched jobs.
+-- I use a temp table so the MERGE reads a stable source.
 CREATE OR REPLACE TEMP TABLE src_priority_jobs AS 
 SELECT 
   jpf.job_id,
@@ -25,18 +46,18 @@ SELECT
   r.priority_lvl,
   CURRENT_TIMESTAMP AS updated_at
 FROM
-    job_postings_fact AS jpf                          -- updated to use main schema
-LEFT JOIN company_dim AS cd                           -- updated to use main schema
+    job_postings_fact AS jpf
+LEFT JOIN company_dim AS cd
     ON jpf.company_id = cd.company_id
-INNER JOIN priority_mart.priority_roles AS r               -- updated to use priority_mart schema
+INNER JOIN priority_mart.priority_roles AS r
     ON jpf.job_title_short = r.role_name;
 
--- Step 4: MERGE operation to update snapshot
--- This MERGE statement handles:
--- - Updates when priority_lvl changes (WHEN MATCHED)
--- - Inserts for new jobs (WHEN NOT MATCHED)
--- - Deletes for jobs no longer in source (WHEN NOT MATCHED BY SOURCE)
-MERGE INTO priority_mart.priority_jobs_snapshot AS tgt     -- updated to use priority_mart schema
+-- == Step 4: MERGE -- the heart of the incremental update =============
+-- Three cases handled atomically:
+--   MATCHED + priority changed  -> UPDATE the row
+--   NOT MATCHED                 -> INSERT new jobs (e.g. Data Scientist)
+--   NOT MATCHED BY SOURCE       -> DELETE jobs that no longer qualify
+MERGE INTO priority_mart.priority_jobs_snapshot AS tgt
 USING src_priority_jobs AS src
 ON tgt.job_id = src.job_id
 
@@ -67,12 +88,11 @@ WHEN NOT MATCHED THEN
 
 WHEN NOT MATCHED BY SOURCE THEN DELETE;
 
--- Verify mart was updated
+-- == Verification =====================================================
 SELECT 'Priority Roles Dimension' AS table_name, COUNT(*) as record_count FROM priority_mart.priority_roles
 UNION ALL
 SELECT 'Priority Jobs Snapshot', COUNT(*) FROM priority_mart.priority_jobs_snapshot;
 
--- Show sample data from each table
 SELECT '=== Priority Roles Dimension Sample ===' AS info;
 SELECT * FROM priority_mart.priority_roles;
 
@@ -82,6 +102,6 @@ SELECT
     COUNT(*) AS job_count,
     MIN(priority_lvl) AS priority_lvl,
     MIN(updated_at) AS updated_at
-FROM priority_mart.priority_jobs_snapshot          -- updated to use priority_mart schema
+FROM priority_mart.priority_jobs_snapshot
 GROUP BY job_title_short
 ORDER BY job_count DESC;

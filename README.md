@@ -21,9 +21,9 @@ This repo is organized into two main learning tracks:
 
 | # | Project | What It Proves |
 |---|---------|----------------|
-| 1 | [**Exploratory Data Analysis**](./Data-Engineering/SQL_COURSE/Projects/1_EDA/) | I can write production-quality analytical SQL, design multi-table joins, and extract actionable insights from raw data |
-| 2 | [**Data Warehouse & Mart Build**](./Data-Engineering/SQL_COURSE/Projects/2_WH_Mart_Build/) | I can architect end-to-end ETL pipelines — from cloud-hosted CSVs to star schema warehouses to specialized data marts with incremental updates |
-| 3 | [**Flat-to-Warehouse Transformation**](./Data-Engineering/SQL_COURSE/Projects/3_Flat_to_WH_Build/) | I can transform messy, denormalized flat files into clean star schemas through string parsing, normalization, and surrogate key generation |
+| 1 | [**Job Market EDA**](./Data-Engineering/SQL_COURSE/Projects/1_EDA/) | I can write analytical SQL that answers real questions — multi-table joins, MEDIAN aggregations, and a custom demand-salary scoring formula |
+| 2 | [**Data Warehouse & Mart Build**](./Data-Engineering/SQL_COURSE/Projects/2_WH_Mart_Build/) | I can build a full ETL pipeline — extract CSVs from cloud storage, normalize into a star schema, create four specialized marts, and maintain them with MERGE |
+| 3 | [**Flat-to-Warehouse Transformation**](./Data-Engineering/SQL_COURSE/Projects/3_Flat_to_WH_Build/) | I can take genuinely messy source data (Python list strings in a CSV) and transform it into a clean star schema with parsed dimensions and bridge tables |
 | 4 | [**Priority Jobs Pipeline**](./Data-types/4_Priority_Jobs_Pipeline/) | I can build incremental ETL pipelines with staging, upsert patterns, schema evolution, and proper data type handling |
 
 Plus a [**SQL Lessons**](./Data-Engineering/SQL_COURSE/Lessons/) — a complete 15-lesson course covering SQL from scratch through advanced data engineering patterns (window functions, star schema design, ETL pipelines, query optimization).
@@ -164,21 +164,21 @@ Data-Engineering-Journey/
 
 ## Project Deep Dives
 
-### Project 1 — Exploratory Data Analysis
+### Project 1 — Job Market EDA
 
-**The question:** *What skills should a data engineer learn to maximize career value?*
+**The question I wanted to answer:** *If I'm going to invest months learning skills, which ones actually matter?*
 
-I queried a star schema data warehouse of real-world job postings to answer three business questions:
+I wrote three queries against a star schema of real job postings, each building on the last:
 
-1. **Which skills are most in-demand?** — SQL and Python dominate with ~29,000 postings each, followed by AWS, Azure, and Spark
-2. **Which skills pay the most?** — Infrastructure tools like Kubernetes, Terraform, and Docker command premium salaries
-3. **What's the optimal skill to learn?** — Combined log-transformed demand with median salary to create a single "optimal score" — Terraform, Python, and AWS top the list
+1. **Demand analysis** — SQL and Python each appear in ~29K remote DE postings, nearly double the next skill. They're not optional.
+2. **Salary analysis** — Used MEDIAN (not AVG) to avoid outlier skew. Rust pays $210K but has only 232 postings. Terraform ($184K, 3,248 postings) is the real sweet spot.
+3. **Combined scoring** — Built a formula: `MEDIAN(salary) × LN(demand_count) / 1,000,000`. The log transform compresses the demand range so niche high-paying skills can compete fairly with high-volume ones.
 
-**Key technical highlights:**
-- Multi-table `INNER JOIN` across fact, bridge, and dimension tables
-- `MEDIAN()`, `LN()`, `ROUND()` for statistical analysis
-- `HAVING` clause filtering on aggregated results
-- Clean, commented, production-ready SQL
+**What makes this interesting technically:**
+- Three-table INNER JOINs across fact → bridge → dimension tables
+- MEDIAN over AVG for honest salary reporting
+- LN() transformation to normalize wildly different demand counts
+- HAVING >= 100 to filter out statistically meaningless skills
 
 → [**Explore Project 1**](./Data-Engineering/SQL_COURSE/Projects/1_EDA/)
 
@@ -186,41 +186,41 @@ I queried a star schema data warehouse of real-world job postings to answer thre
 
 ### Project 2 — Data Warehouse & Mart Build
 
-**The question:** *How do you turn raw CSV files into a queryable, business-ready data platform?*
+**What I wanted to build:** *A real pipeline, not just queries. Something that takes raw files and turns them into a system.*
 
-Built a complete ETL pipeline that extracts job posting CSVs from Google Cloud Storage, loads them into a normalized star schema, and then creates **4 specialized data marts** optimized for different analytical use cases:
+This pipeline extracts CSVs from Google Cloud Storage, loads them into a star schema warehouse, then builds four purpose-built marts on top:
 
-| Mart | Purpose | Grain |
-|------|---------|-------|
-| **Flat Mart** | Denormalized table for ad-hoc queries | One row per job posting |
-| **Skills Mart** | Time-series skill demand analysis | skill + month + job title |
-| **Priority Mart** | Priority role tracking with incremental updates | One row per job posting |
-| **Company Mart** | Company hiring trends by role & location | company + title + location + month |
+| Mart | Why it exists | Grain |
+|------|--------------|-------|
+| **Flat Mart** | Analysts want one table for Excel — no joins needed | One row per posting |
+| **Skills Mart** | Time-series trend analysis with additive measures | skill + month + role |
+| **Priority Mart** | Track specific roles with incremental MERGE updates | One row per posting |
+| **Company Mart** | Hiring intelligence by company, location, and month | company + title + location + month |
 
-**Key technical highlights:**
-- Cloud data extraction via DuckDB's `httpfs` extension from GCS
-- Star schema design with fact, dimension, and bridge tables
-- **MERGE operations** for production-ready incremental updates (INSERT/UPDATE/DELETE in one statement)
-- Additive measures designed for safe re-aggregation at any level
-- Master orchestration script for one-command pipeline execution
-- Separate schemas per mart for logical data isolation
+**What makes this interesting technically:**
+- Direct CSV extraction from GCS using DuckDB's `httpfs` — no download step
+- Full MERGE upsert: INSERT new, UPDATE changed, DELETE removed — in one statement
+- Additive fact measures (counts, not ratios) that can safely roll up to any grain
+- Bridge tables for many-to-many relationships (jobs↔skills, companies↔locations)
+- Separate schemas per mart so you can rebuild one without touching others
+- One-command execution via master build script
 
 → [**Explore Project 2**](./Data-Engineering/SQL_COURSE/Projects/2_WH_Mart_Build/)
 
 ---
 
-### Project 3 — Flat-to-Warehouse Transformation
+### Project 3 — Flat CSV to Star Schema
 
-**The question:** *What do you do when your source data is a single messy CSV with skills jammed into Python list strings?*
+**Why I built this on my own:** *The course gave us pre-formatted CSVs. Real data isn't that clean.*
 
-This was a self-initiated bonus project. The raw data had skills stored as `['SQL', 'Python', 'AWS']` — a string, not an array. I built a pipeline to parse, normalize, and load it into the same star schema used in the other projects.
+This was a self-directed bonus project. The source file had skills crammed into Python-style list strings: `['SQL', 'Python', 'AWS']`. That's not JSON (single quotes), it's not an array (it's a VARCHAR), and you can't join on it. I built a pipeline to parse it, normalize it, and load it into the same star schema as the other projects.
 
-**Key technical highlights:**
-- String parsing with `UNNEST`, `STRING_SPLIT`, and `REPLACE` to convert Python lists into relational rows
-- Surrogate key generation via `ROW_NUMBER()` window functions
-- Deduplication logic for company and skills dimensions
-- Shell script with `set -e` for fail-fast execution
-- End-to-end verification queries to validate row counts and referential integrity
+**What makes this interesting technically:**
+- The main challenge: REPLACE → STRING_SPLIT → UNNEST → TRIM → DISTINCT to extract individual skills from embedded list strings
+- Surrogate key generation with `ROW_NUMBER() OVER (ORDER BY ...)` for deterministic, repeatable IDs
+- Bridge table population without a shared natural key (had to join on title + date, then re-parse skills)
+- Shell script with `set -e` so any failure stops everything immediately
+- Verification queries that test record counts AND cross-table joins
 
 → [**Explore Project 3**](./Data-Engineering/SQL_COURSE/Projects/3_Flat_to_WH_Build/)
 
