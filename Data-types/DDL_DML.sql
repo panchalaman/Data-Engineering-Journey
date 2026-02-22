@@ -36,13 +36,14 @@ VALUES
     (2, 'Senior Data Engineer'),
     (3, 'Software Engineer');
 
+
 SELECT *
 From staging.preferred_roles;
 
 ALTER TABLE staging.preferred_roles
 ADD COLUMN preferred_role BOOLEAN;
 
---Update table information
+--Update table information COLUMN specific
 UPDATE staging.preferred_roles
 SET preferred_role = TRUE
 WHERE   role_id = 1 OR role_id=2;
