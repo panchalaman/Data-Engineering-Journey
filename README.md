@@ -24,6 +24,7 @@ This repo is organized into two main learning tracks:
 | 1 | [**Exploratory Data Analysis**](./Data-Engineering/SQL_COURSE/Projects/1_EDA/) | I can write production-quality analytical SQL, design multi-table joins, and extract actionable insights from raw data |
 | 2 | [**Data Warehouse & Mart Build**](./Data-Engineering/SQL_COURSE/Projects/2_WH_Mart_Build/) | I can architect end-to-end ETL pipelines — from cloud-hosted CSVs to star schema warehouses to specialized data marts with incremental updates |
 | 3 | [**Flat-to-Warehouse Transformation**](./Data-Engineering/SQL_COURSE/Projects/3_Flat_to_WH_Build/) | I can transform messy, denormalized flat files into clean star schemas through string parsing, normalization, and surrogate key generation |
+| 4 | [**Priority Jobs Pipeline**](./Data-types/4_Priority_Jobs_Pipeline/) | I can build incremental ETL pipelines with staging, upsert patterns, schema evolution, and proper data type handling |
 
 Plus a [**SQL Lessons**](./Data-Engineering/SQL_COURSE/Lessons/) — a complete 15-lesson course covering SQL from scratch through advanced data engineering patterns (window functions, star schema design, ETL pipelines, query optimization).
 
@@ -146,6 +147,17 @@ Data-Engineering-Journey/
         ├── 01_python_etl_pipeline/              # CSV → Python → PostgreSQL
         ├── 02_multi_service_pipeline/           # Source DB → ETL → Warehouse
         └── 03_airflow_pipeline/                 # Full Airflow orchestration
+│
+├── Data-types/
+│   └── 4_Priority_Jobs_Pipeline/                ← Project 4: Incremental ETL Pipeline
+│       ├── 01_setup_database.sql                # Database & schema creation
+│       ├── 02_create_priority_roles.sql         # Config table with priority levels
+│       ├── 02b_schema_evolution.sql             # ALTER TABLE journey (learning ref)
+│       ├── 03_data_type_exploration.sql         # CAST, type analysis, source inspection
+│       ├── 04_initial_load.sql                  # Full load — CREATE + INSERT INTO
+│       ├── 05_incremental_refresh.sql           # Upsert — UPDATE changed + INSERT new
+│       ├── run_pipeline.sh                      # One-command pipeline execution
+│       └── README.md
 ```
 
 ---
@@ -211,6 +223,22 @@ This was a self-initiated bonus project. The raw data had skills stored as `['SQ
 - End-to-end verification queries to validate row counts and referential integrity
 
 → [**Explore Project 3**](./Data-Engineering/SQL_COURSE/Projects/3_Flat_to_WH_Build/)
+
+### Project 4 — Priority Jobs Pipeline
+
+**The question:** *How do you build an ETL pipeline that loads data correctly and updates incrementally?*
+
+This one started as practice with DDL/DML commands and turned into a proper pipeline. I built a priority roles config table, joined it against the full job postings warehouse, and implemented an upsert pattern for incremental refreshes.
+
+**Key technical highlights:**
+- INSERT INTO vs bare SELECT — learned the hard way that SELECT alone doesn't load data
+- Upsert pattern: UPDATE changed rows + INSERT new rows using temp staging tables
+- `IS DISTINCT FROM` for NULL-safe comparisons in UPDATE conditions
+- Schema evolution: table went through 3 phases (boolean → integer priority levels) using ALTER TABLE
+- Data type exploration: CAST, DOUBLE vs DECIMAL, TIMESTAMP vs DATE
+- Idempotent scripts with CREATE OR REPLACE and IF EXISTS
+
+→ [**Explore Project 4**](./Data-types/4_Priority_Jobs_Pipeline/)
 
 ---
 

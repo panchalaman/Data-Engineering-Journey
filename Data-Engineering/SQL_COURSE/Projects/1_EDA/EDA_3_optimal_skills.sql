@@ -1,59 +1,88 @@
-/*
-Question: What are the most optimal skills for data engineers—balancing both demand and salary?
-- Create a ranking column that combines demand count and median salary to identify the most valuable skills.
-- Focus only on remote Data Engineer positions with specified annual salaries.
-- Why?
-    - This approach highlights skills that balance market demand and financial reward. It weights core skills appropriately instead of letting rare, outlier skills distort the results.
-    - The natural log transformation ensures that both high-salary and widely in-demand skills surface as the most practical and valuable to learn for data engineering careers.
-*/
+-- =============================================================================
+-- EDA Query 3: Optimal Skills — Balancing Demand and Salary
+-- =============================================================================
+-- Author: Aman Panchal
+--
+-- Goal:
+--   Queries 1 and 2 each told half the story — demand OR salary. Here I wanted
+--   a single score that captures both: "If I learn this skill, how likely am I
+--   to get hired AND get paid well?"
+--
+-- The scoring formula:
+--   optimal_score = MEDIAN(salary) * LN(COUNT) / 1,000,000
+--
+--   Why LN (natural log)?
+--   Raw demand counts are wildly different (SQL has 1,128 postings vs. Go at 113).
+--   If I just multiplied salary × count, high-demand skills would dominate even
+--   with average pay. LN compresses that range:
+--     LN(113)  ≈ 5     LN(1128) ≈ 7
+--   Now the gap is 5 vs 7 instead of 113 vs 1128 — much fairer comparison.
+--   A skill still needs decent demand to score well, but a niche skill with
+--   amazing pay can compete.
+--
+-- Filter:
+--   HAVING >= 100 removes statistical noise from rare skills.
+--   Only remote DE roles with salary data reported.
+-- =============================================================================
 
-SELECT 
+SELECT
     sd.skills,
     ROUND(MEDIAN(jpf.salary_year_avg), 0) AS median_salary,
     COUNT(jpf.salary_year_avg) AS demand_count,
+
+    -- Compressed demand for scoring (keeps scale manageable)
     ROUND(LN(COUNT(jpf.*)), 0) AS ln_demand_count,
-    ROUND((MEDIAN(jpf.salary_year_avg) * LN(COUNT(jpf.*))/1000000), 2) AS optimal_score,
-    
+
+    -- The composite score: higher = better overall value
+    ROUND(
+        (MEDIAN(jpf.salary_year_avg) * LN(COUNT(jpf.*))) / 1000000,
+        2
+    ) AS optimal_score
+
 FROM job_postings_fact jpf
-INNER JOIN skills_job_dim sjd ON jpf.job_id = sjd.job_id
-INNER JOIN skills_dim sd ON sjd.skill_id = sd.skill_id
+
+INNER JOIN skills_job_dim sjd
+    ON jpf.job_id = sjd.job_id
+
+INNER JOIN skills_dim sd
+    ON sjd.skill_id = sd.skill_id
+
 WHERE
     jpf.job_title_short = 'Data Engineer'
-    AND jpf.job_work_from_home = True 
-    AND jpf.salary_year_avg IS NOT NULL
-GROUP BY
-    sd.skills
-HAVING
-    COUNT(sd.skills) >= 100
-ORDER BY
-    optimal_score DESC
+    AND jpf.job_work_from_home = True
+    AND jpf.salary_year_avg IS NOT NULL      -- salary must be reported
+
+GROUP BY sd.skills
+
+HAVING COUNT(sd.skills) >= 100               -- minimum sample size
+
+ORDER BY optimal_score DESC
 LIMIT 25;
 
 
 /*
-Here's a breakdown of the most optimal skills for Data Engineers, based on both high demand and high salaries:
+Results & Takeaways
+--------------------
+Terraform (0.97) edges out Python (0.95) and SQL (0.91) for the top spot.
+That's surprising — but it makes sense. Terraform has both a high salary
+($184K) and meaningful demand (193 postings). The LN transform rewards
+that balance.
 
-Top Skills by Optimal Score:
-- Terraform leads the list with a $184K median salary and 193 postings, resulting in the highest overall "optimal score".
-- Python and SQL dominate demand (over 1100 postings each), with strong median salaries of $135K and $130K, respectively.
-- AWS (783 postings, $137K median), Spark (503 postings, $140K median), and Airflow (386 postings, $150K median) are all highly sought-after cloud and big data technologies.
-- Kafka offers high compensation ($145K median) and solid demand (292 postings).
-- Tools like Snowflake, Azure, and Databricks each have 250–475 postings and median salaries between $128–$137K.
+The "learn these first" tier (score >= 0.85):
+  Terraform, Python, SQL, AWS, Airflow, Spark
+  These six skills cover infrastructure, code, cloud, orchestration, and
+  processing — basically the full DE stack.
 
-DevOps & Engineering Tools:
-- Airflow ($150K), Kubernetes ($150.5K), and Docker ($135K) stand out for their mix of demand and top median salaries.
-- Git ($140K/208 postings) and Github ($135K/127 postings) have broad utility and competitive compensation.
+The "learn these next" tier (score 0.70-0.84):
+  Kafka, Snowflake, Azure, Java, Scala, Git, Kubernetes, Databricks
+  All solid additions that either boost salary or open more job listings.
 
-Noteworthy Languages:
-- Java (303 postings, $135K median) and Scala (247 postings, $137K median) remain strong choices for well-paid data engineering roles.
-- Go ($140K/113 postings) is another programming language with excellent compensation.
+The "nice to have" tier (score 0.65-0.69):
+  Docker, MongoDB, R, Go, BigQuery, GitHub
+  Competitive pay, smaller demand pools. Good for specialization.
 
-Databases & Cloud:
-- Redshift ($130K/274 postings), GCP ($136K/196 postings), Hadoop ($135K/198 postings), NoSQL ($134.4K/193 postings), and MongoDB ($135.8K/136 postings) add to a well-rounded data engineering skill set.
-- R, Pyspark, and BigQuery each deliver competitive salaries and meet the threshold for demand.
-
-Summary:
-Skills that consistently appear near the top balance a strong combination of market demand (job security) and financial benefit. Python, SQL, AWS, Spark, Airflow, and Terraform are particularly strategic for both immediate opportunities and longer-term career growth in data engineering.
+Bottom line: Python + SQL + AWS + Airflow + Spark + Terraform gives you
+the highest combined return on learning investment for data engineering.
 
 ┌────────────┬───────────────┬──────────────┬─────────────────┬───────────────┐
 │   skills   │ median_salary │ demand_count │ ln_demand_count │ optimal_score │
@@ -87,5 +116,4 @@ Skills that consistently appear near the top balance a strong combination of mar
 ├────────────┴───────────────┴──────────────┴─────────────────┴───────────────┤
 │ 25 rows                                                           5 columns │
 └─────────────────────────────────────────────────────────────────────────────┘
-
 */

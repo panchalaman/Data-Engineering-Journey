@@ -35,3 +35,9 @@ Every lesson uses a real dataset of tech job postings and is designed to run in 
 > SQL-driven transformation of flat job posting data into a normalized star schema using DuckDB.
 
 **Skills**: Data transformation, star schema design, ETL pipeline development, production practices
+
+### [4_Priority_Jobs_Pipeline/](../Data-types/4_Priority_Jobs_Pipeline) - Priority Jobs Snapshot Pipeline
+
+> Incremental ETL pipeline that tracks job postings by role priority with upsert patterns and schema evolution.
+
+**Skills**: DDL/DML, INSERT INTO vs CTAS, upsert pattern, staging tables, ALTER TABLE, data types, idempotency
