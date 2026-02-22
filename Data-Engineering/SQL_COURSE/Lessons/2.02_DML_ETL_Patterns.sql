@@ -8,6 +8,12 @@
 -- If DDL builds the containers, DML fills them.
 -- ============================================================
 
+-- IMPORTANT: The MotherDuck data_jobs database is read-only.
+-- We create a local in-memory database for all write operations.
+-- SELECTs from data_jobs tables still work automatically.
+ATTACH ':memory:' AS local;
+USE local;
+
 
 -- ============================================================
 -- INSERT — Adding Data

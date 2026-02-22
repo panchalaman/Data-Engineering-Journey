@@ -14,6 +14,13 @@
 --   - Building dimension and fact tables
 -- ============================================================
 
+-- IMPORTANT: The MotherDuck data_jobs database is read-only.
+-- We create a local in-memory database for all CREATE/ALTER/DROP
+-- operations. SELECTs from data_jobs tables still work — DuckDB
+-- searches all attached databases automatically.
+ATTACH ':memory:' AS local;
+USE local;
+
 
 -- ============================================================
 -- DATA TYPES
@@ -140,6 +147,19 @@ VALUES
     (5, 'Eve', 'Marketing', 95000.00, '2023-08-05');
 
 SELECT * FROM demo_employees;
+/*
+
+┌─────────────┬─────────┬─────────────┬───────────────┬────────────┬───────────┬────────────────────────────┐
+│ employee_id │  name   │ department  │    salary     │ hire_date  │ is_active │         created_at         │
+│    int32    │ varchar │   varchar   │ decimal(10,2) │    date    │  boolean  │         timestamp          │
+├─────────────┼─────────┼─────────────┼───────────────┼────────────┼───────────┼────────────────────────────┤
+│           1 │ Alice   │ Engineering │     125000.00 │ 2022-01-15 │ true      │ 2026-02-22 11:31:28.488464 │
+│           2 │ Bob     │ Data        │     115000.00 │ 2022-06-01 │ true      │ 2026-02-22 11:31:28.488464 │
+│           3 │ Charlie │ Data        │     105000.00 │ 2023-03-10 │ true      │ 2026-02-22 11:31:28.488464 │
+│           4 │ Diana   │ Engineering │     135000.00 │ 2021-11-20 │ true      │ 2026-02-22 11:31:28.488464 │
+│           5 │ Eve     │ Marketing   │      95000.00 │ 2023-08-05 │ true      │ 2026-02-22 11:31:28.488464 │
+└─────────────┴─────────┴─────────────┴───────────────┴────────────┴───────────┴────────────────────────────┘
+*/
 
 -- Clean up
 DROP TABLE IF EXISTS demo_employees;
@@ -184,13 +204,26 @@ SELECT
     job_location,
     salary_year_avg,
     job_posted_date
-FROM job_postings_fact
+FROM data_jobs.job_postings_fact
 WHERE
     job_title_short = 'Data Engineer'
     AND salary_year_avg > 150000;
 
 SELECT COUNT(*) FROM high_paying_data_jobs;
 SELECT * FROM high_paying_data_jobs LIMIT 5;
+/*
+
+┌────────┬────────────────────────────────────┬─────────────────┬───────────────┬─────────────────┬─────────────────────┐
+│ job_id │             job_title              │ job_title_short │ job_location  │ salary_year_avg │   job_posted_date   │
+│ int32  │              varchar               │     varchar     │    varchar    │     double      │      timestamp      │
+├────────┼────────────────────────────────────┼─────────────────┼───────────────┼─────────────────┼─────────────────────┤
+│   4846 │ Data Engineer - Revenue Platforms  │ Data Engineer   │ Boston, NY    │        300000.0 │ 2023-01-01 00:24:39 │
+│   5330 │ Data Engineer                      │ Data Engineer   │ Arlington, VA │        165000.0 │ 2023-01-01 06:06:43 │
+│   5369 │ Data Engineer - Spark, Scala, Ka…  │ Data Engineer   │ San Jose, CA  │        175000.0 │ 2023-01-01 06:18:45 │
+│   6351 │ Data Engineer                      │ Data Engineer   │ Dearborn, MI  │        165000.0 │ 2023-01-01 14:24:58 │
+│  10507 │ Data Engineer - Web3               │ Data Engineer   │ Anywhere      │        192500.0 │ 2023-01-02 22:06:36 │
+└────────┴────────────────────────────────────┴─────────────────┴───────────────┴─────────────────┴─────────────────────
+*/
 
 -- CTAS is everywhere in ETL:
 --   - Staging tables
@@ -252,15 +285,34 @@ SELECT
     jpf.job_location,
     jpf.salary_year_avg,
     jpf.job_posted_date
-FROM job_postings_fact jpf
-LEFT JOIN company_dim cd ON jpf.company_id = cd.company_id
+FROM data_jobs.job_postings_fact jpf
+LEFT JOIN data_jobs.company_dim cd ON jpf.company_id = cd.company_id
 WHERE
     jpf.job_title_short = 'Data Engineer'
     AND jpf.salary_year_avg IS NOT NULL;
 
 -- Now query it like a table
 SELECT * FROM v_data_engineer_salaries LIMIT 10;
+/*
 
+┌─────────┬──────────────────────┬──────────────────────────────┬───────────────┬─────────────────┬─────────────────────┐
+│ job_id  │      job_title       │         company_name         │ job_location  │ salary_year_avg │   job_posted_date   │
+│  int32  │       varchar        │           varchar            │    varchar    │     double      │      timestamp      │
+├─────────┼──────────────────────┼──────────────────────────────┼───────────────┼─────────────────┼─────────────────────┤
+│ 1046365 │ Data Engineer        │ ProIT Inc.                   │ Seattle, WA   │        110000.0 │ 2024-06-06 20:50:54 │
+│ 1046426 │ Data Engineer        │ University of California, …  │ Riverside, CA │        111850.0 │ 2024-06-06 22:10:39 │
+│ 1046530 │ Data Engineer (SQL)  │ Trademark Recruiting         │ Tampa, FL     │         85000.0 │ 2024-06-07 00:07:22 │
+│ 1046743 │ Data Engineer        │ Meta                         │ Sunnyvale, CA │        222560.0 │ 2024-06-07 07:05:33 │
+│ 1046967 │ Principal Cloud Da…  │ General Motors               │ Austin, TX    │        219000.0 │ 2024-06-07 09:07:06 │
+│ 1047335 │ Senior Full Stack …  │ Collab                       │ Anywhere      │        155000.0 │ 2024-06-07 13:06:11 │
+│ 1047462 │ Data Engineer        │ Robert Half                  │ Las Vegas, NV │        112500.0 │ 2024-06-07 14:09:16 │
+│ 1047584 │ Snowflake Data Eng…  │ Valtofs Technologies         │ New York, NY  │        115000.0 │ 2024-06-07 15:04:35 │
+│ 1047591 │ Data Engineer II     │ Rightway                     │ Anywhere      │        122500.0 │ 2024-06-07 15:05:22 │
+│ 1047592 │ Senior Associate D…  │ Discover                     │ Chicago, IL   │         96250.0 │ 2024-06-07 15:05:33 │
+├─────────┴──────────────────────┴──────────────────────────────┴───────────────┴─────────────────┴─────────────────────┤
+│ 10 rows                                                                                                     6 columns │
+└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
 -- Views are great for:
 -- - Hiding complex joins behind simple names
 -- - Access control (expose only certain columns)
@@ -275,18 +327,18 @@ DROP VIEW IF EXISTS v_data_engineer_salaries;
 -- Temp tables exist only for your session. They disappear when
 -- you disconnect. Perfect for intermediate pipeline steps.
 
-CREATE TEMP TABLE temp_skills_summary AS
+CREATE TEMP TABLE data_jobs.temp_skills_summary AS
 SELECT
     sd.skills AS skill_name,
     COUNT(*) AS demand_count,
     ROUND(AVG(jpf.salary_year_avg), 0) AS avg_salary
-FROM skills_job_dim sjd
-JOIN job_postings_fact jpf ON sjd.job_id = jpf.job_id
-JOIN skills_dim sd ON sjd.skill_id = sd.skill_id
+FROM data_jobs.skills_job_dim sjd
+JOIN data_jobs.job_postings_fact jpf ON sjd.job_id = jpf.job_id
+JOIN data_jobs.skills_dim sd ON sjd.skill_id = sd.skill_id
 WHERE jpf.salary_year_avg IS NOT NULL
 GROUP BY sd.skills;
 
-SELECT * FROM temp_skills_summary
+SELECT * FROM data_jobs.temp_skills_summary
 ORDER BY demand_count DESC
 LIMIT 10;
 
@@ -310,7 +362,7 @@ CREATE SCHEMA IF NOT EXISTS staging;
 CREATE SCHEMA IF NOT EXISTS warehouse;
 
 CREATE TABLE staging.raw_jobs AS
-SELECT * FROM job_postings_fact LIMIT 100;
+SELECT * FROM data_jobs.job_postings_fact LIMIT 100;
 
 SELECT * FROM staging.raw_jobs LIMIT 5;
 
@@ -425,6 +477,19 @@ FROM mini_job_fact f
 JOIN mini_company_dim c ON f.company_id = c.company_id
 JOIN mini_skills_bridge b ON f.job_id = b.job_id
 JOIN mini_skills_dim s ON b.skill_id = s.skill_id;
+/*
+
+┌───────────────┬──────────────┬───────────────┬────────────┐
+│   job_title   │ company_name │    salary     │ skill_name │
+│    varchar    │   varchar    │ decimal(10,2) │  varchar   │
+├───────────────┼──────────────┼───────────────┼────────────┤
+│ Data Engineer │ Google       │     165000.00 │ SQL        │
+│ Data Engineer │ Google       │     165000.00 │ Python     │
+│ Data Engineer │ Google       │     165000.00 │ AWS        │
+│ Data Engineer │ Stripe       │     175000.00 │ SQL        │
+│ Data Engineer │ Stripe       │     175000.00 │ Python     │
+└───────────────┴──────────────┴───────────────┴────────────┘
+*/
 
 -- Clean up
 DROP TABLE IF EXISTS mini_skills_bridge;
@@ -467,10 +532,39 @@ DROP TABLE IF EXISTS mini_company_dim;
 -- 1. Create a table called "skill_demand_mart" using CTAS that
 --    has: skill_name, demand_count, avg_salary, min_salary,
 --    max_salary — grouped by skill
+DROP TABLE IF EXISTS skill_demand_mart;
+
+CREATE TABLE skill_demand_mart AS
+ SELECT
+        sd.skills AS skill_name,
+        COUNT(*) AS demand_count,
+        ROUND(AVG(salary_year_avg), 0) AS avg_salary,
+        ROUND(MIN(salary_year_avg), 0) AS min_salary,
+        ROUND(MAX(salary_year_avg), 0) AS max_salary
+
+ FROM data_jobs.job_postings_fact jpf LEFT JOIN data_jobs.skills_job_dim sjd
+ ON jpf.job_id = sjd.job_id INNER JOIN data_jobs.skills_dim sd ON sjd.skill_id = sd.skill_id
+ WHERE jpf.salary_year_avg IS NOT NULL
+ GROUP BY skill_name;
+
+SELECT *
+FROM skill_demand_mart
+LIMIT 10;
 --
 -- 2. Create a view that joins job_postings_fact with company_dim
 --    and shows only remote Data Engineer jobs with salaries
---
+
+CREATE OR REPLACE VIEW v_remote_data_engineer_jobs AS
+    SELECT DISTINCT
+        jpf.job_title,
+        cd.name AS company_name,
+        jpf.salary_year_avg,
+        jpf.job_location,
+        jpf.job_posted_date
+    FROM data_jobs.job_postings_fact jpf LEFT JOIN data_jobs.company_dim cd 
+    ON jpf.company_id = cd.company_id
+    WHERE jpf.job_title_short = 'Data Engineer' AND jpf.salary_year_avg IS NOT NULL AND  jpf.job_location LIKE '%Anywhere%';
+SELECT * FROM v_remote_data_engineer_jobs LIMIT 5;
 -- 3. Design a star schema for a different domain (e.g., an
 --    e-commerce store). What would the fact table be?
---    What dimensions would surround it?
+--    What dimensions would surround it?    
