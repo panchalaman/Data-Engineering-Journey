@@ -4,7 +4,7 @@
 # ============================================================
 # Usage:
 #   cd Data-Engineering-Journey
-#   bash Data-types/4_Priority_Jobs_Pipeline/run_pipeline.sh
+#   bash Data-Engineering/SQL_COURSE/Projects/4_Priority_Jobs_Pipeline/run_pipeline.sh
 #
 # This connects to MotherDuck, runs each script in sequence,
 # and stops on the first error.
@@ -12,7 +12,7 @@
 
 set -e  # Stop on first error
 
-PIPELINE_DIR="Data-types/4_Priority_Jobs_Pipeline"
+PIPELINE_DIR="Data-Engineering/SQL_COURSE/Projects/4_Priority_Jobs_Pipeline"
 
 echo "=== Priority Jobs Pipeline ==="
 echo ""
