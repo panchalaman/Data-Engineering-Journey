@@ -176,6 +176,21 @@ SELECT
     DATE_DIFF('month', job_posted_date, CURRENT_DATE) AS months_ago
 FROM job_postings_fact
 LIMIT 5;
+/*
+
+┌─────────────────────┬────────────┬──────────┬────────────┐
+│   job_posted_date   │   today    │ days_ago │ months_ago │
+│      timestamp      │    date    │  int64   │   int64    │
+├─────────────────────┼────────────┼──────────┼────────────┤
+│ 2023-01-01 00:00:04 │ 2026-02-27 │     1153 │         37 │
+│ 2023-01-01 00:00:22 │ 2026-02-27 │     1153 │         37 │
+│ 2023-01-01 00:00:24 │ 2026-02-27 │     1153 │         37 │
+│ 2023-01-01 00:00:27 │ 2026-02-27 │     1153 │         37 │
+│ 2023-01-01 00:00:38 │ 2026-02-27 │     1153 │         37 │
+└─────────────────────┴────────────┴──────────┴────────────┘
+
+*/
+-- This is how you calculate the "age" of a job posting, which can be useful for understanding how long positions stay open or for prioritizing newer postings in a job search.     
 
 
 -- Date Arithmetic
@@ -185,12 +200,36 @@ SELECT
     job_posted_date - INTERVAL '1 month' AS minus_1_month
 FROM job_postings_fact
 LIMIT 5;
+/*
+
+┌─────────────────────┬─────────────────────┬─────────────────────┐
+│   job_posted_date   │    plus_30_days     │    minus_1_month    │
+│      timestamp      │      timestamp      │      timestamp      │
+├─────────────────────┼─────────────────────┼─────────────────────┤
+│ 2023-01-01 00:00:04 │ 2023-01-31 00:00:04 │ 2022-12-01 00:00:04 │
+│ 2023-01-01 00:00:22 │ 2023-01-31 00:00:22 │ 2022-12-01 00:00:22 │
+│ 2023-01-01 00:00:24 │ 2023-01-31 00:00:24 │ 2022-12-01 00:00:24 │
+│ 2023-01-01 00:00:27 │ 2023-01-31 00:00:27 │ 2022-12-01 00:00:27 │
+│ 2023-01-01 00:00:38 │ 2023-01-31 00:00:38 │ 2022-12-01 00:00:38 │
+└─────────────────────┴─────────────────────┴─────────────────────┘
+
+*/
 
 
 -- CASTING strings to dates
 SELECT
     CAST('2024-03-15' AS DATE) AS date_value,
     CAST('2024-03-15 10:30:00' AS TIMESTAMP) AS timestamp_value;
+/*
+
+┌────────────┬─────────────────────┐
+│ date_value │   timestamp_value   │
+│    date    │      timestamp      │
+├────────────┼─────────────────────┤
+│ 2024-03-15 │ 2024-03-15 10:30:00 │
+└────────────┴─────────────────────┘
+
+*/
 
 
 -- ============================================================
@@ -203,6 +242,20 @@ SELECT
     LENGTH(job_title) AS title_length
 FROM job_postings_fact
 LIMIT 5;
+/*
+
+┌───────────────────────────────────────────┬──────────────┐
+│                 job_title                 │ title_length │
+│                  varchar                  │    int64     │
+├───────────────────────────────────────────┼──────────────┤
+│ Data Analyst                              │           12 │
+│ Data Analyst                              │           12 │
+│ Data Analyst                              │           12 │
+│ Senior Data Analyst / Platform Experience │           41 │
+│ Data Analyst                              │           12 │
+└───────────────────────────────────────────┴──────────────┘
+
+*/
 
 
 -- UPPER / LOWER
@@ -212,6 +265,20 @@ SELECT
     LOWER(job_title) AS whisper
 FROM job_postings_fact
 LIMIT 5;
+/*
+
+┌───────────────────────────────┬───────────────────────────────────────────┬───────────────────────────────────────────┐
+│           job_title           │                 screaming                 │                  whisper                  │
+│            varchar            │                  varchar                  │                  varchar                  │
+├───────────────────────────────┼───────────────────────────────────────────┼───────────────────────────────────────────┤
+│ Data Analyst                  │ DATA ANALYST                              │ data analyst                              │
+│ Data Analyst                  │ DATA ANALYST                              │ data analyst                              │
+│ Data Analyst                  │ DATA ANALYST                              │ data analyst                              │
+│ Senior Data Analyst / Platf…  │ SENIOR DATA ANALYST / PLATFORM EXPERIENCE │ senior data analyst / platform experience │
+│ Data Analyst                  │ DATA ANALYST                              │ data analyst                              │
+└───────────────────────────────┴───────────────────────────────────────────┴───────────────────────────────────────────┘
+
+*/
 
 
 -- TRIM — Remove Whitespace
@@ -219,6 +286,17 @@ SELECT
     TRIM('   hello   ') AS trimmed,
     LTRIM('   hello   ') AS left_trimmed,
     RTRIM('   hello   ') AS right_trimmed;
+/*
+
+┌─────────┬──────────────┬───────────────┐
+│ trimmed │ left_trimmed │ right_trimmed │
+│ varchar │   varchar    │    varchar    │
+├─────────┼──────────────┼───────────────┤
+│ hello   │ hello        │    hello      │
+└─────────┴──────────────┴───────────────┘
+
+*/
+
 -- You'd be surprised how often string data has trailing
 -- spaces. Trim everything when loading data.
 
@@ -230,7 +308,21 @@ SELECT
 FROM job_postings_fact
 WHERE job_location LIKE '%United States%'
 LIMIT 5;
+/*
 
+┌───────────────┬────────────────┐
+│ job_location  │ short_location │
+│    varchar    │    varchar     │
+├───────────────┼────────────────┤
+│ United States │ US             │
+│ United States │ US             │
+│ United States │ US             │
+│ United States │ US             │
+│ United States │ US             │
+└───────────────┴────────────────┘
+
+*/
+-- Handy for standardizing country names or fixing common typos.
 
 -- SUBSTRING / LEFT / RIGHT
 SELECT
@@ -240,6 +332,20 @@ SELECT
     RIGHT(job_title, 5) AS last_5
 FROM job_postings_fact
 LIMIT 5;
+/*
+┌───────────────────────────────────────────┬──────────────────────┬────────────┬─────────┐
+│                 job_title                 │    first_20_chars    │  first_10  │ last_5  │
+│                  varchar                  │       varchar        │  varchar   │ varchar │
+├───────────────────────────────────────────┼──────────────────────┼────────────┼─────────┤
+│ Data Analyst                              │ Data Analyst         │ Data Analy │ alyst   │
+│ Data Analyst                              │ Data Analyst         │ Data Analy │ alyst   │
+│ Data Analyst                              │ Data Analyst         │ Data Analy │ alyst   │
+│ Senior Data Analyst / Platform Experience │ Senior Data Analyst  │ Senior Dat │ ience   │
+│ Data Analyst                              │ Data Analyst         │ Data Analy │ alyst   │
+└───────────────────────────────────────────┴──────────────────────┴────────────┴─────────┘
+
+*/
+-- Useful for parsing structured strings or creating abbreviated versions of text fields.
 
 
 -- SPLIT_PART — Split a string by delimiter
@@ -250,6 +356,27 @@ SELECT
 FROM job_postings_fact
 WHERE job_location LIKE '%,%'
 LIMIT 10;
+/*
+
+┌───────────────────┬───────────────┬──────────────────┐
+│   job_location    │     city      │ state_or_country │
+│      varchar      │    varchar    │     varchar      │
+├───────────────────┼───────────────┼──────────────────┤
+│ New York, NY      │ New York      │  NY              │
+│ Washington, DC    │ Washington    │  DC              │
+│ Fairfax, VA       │ Fairfax       │  VA              │
+│ Worcester, MA     │ Worcester     │  MA              │
+│ Sunnyvale, CA     │ Sunnyvale     │  CA              │
+│ Torrance, CA      │ Torrance      │  CA              │
+│ San Francisco, CA │ San Francisco │  CA              │
+│ Pleasanton, CA    │ Pleasanton    │  CA              │
+│ Rosemead, CA      │ Rosemead      │  CA              │
+│ Thousand Oaks, CA │ Thousand Oaks │  CA              │
+├───────────────────┴───────────────┴──────────────────┤
+│ 10 rows                                    3 columns │
+└──────────────────────────────────────────────────────┘
+
+*/
 -- Handy for parsing "City, State" formatted locations.
 
 
@@ -259,6 +386,20 @@ SELECT
     CONCAT(job_title_short, ' at ', job_location) AS also_combined
 FROM job_postings_fact
 LIMIT 5;
+/*
+
+┌─────────────────────────────────────┬──────────────────────────────────────┐
+│              combined               │            also_combined             │
+│               varchar               │               varchar                │
+├─────────────────────────────────────┼──────────────────────────────────────┤
+│ Data Analyst | New York, NY         │ Data Analyst at New York, NY         │
+│ Data Analyst | Washington, DC       │ Data Analyst at Washington, DC       │
+│ Data Analyst | Fairfax, VA          │ Data Analyst at Fairfax, VA          │
+│ Senior Data Analyst | Worcester, MA │ Senior Data Analyst at Worcester, MA │
+│ Data Analyst | Sunnyvale, CA        │ Data Analyst at Sunnyvale, CA        │
+└─────────────────────────────────────┴──────────────────────────────────────┘
+
+*/
 
 
 -- ============================================================
@@ -282,6 +423,18 @@ SELECT
             ']', ''
         )
     ) AS skill;
+    /*
+
+┌──────────┐
+│  skill   │
+│ varchar  │
+├──────────┤
+│ "SQL"    │
+│ "Python" │
+│ "AWS"    │
+└──────────┘
+
+*/
 
 -- In the real pipeline, this goes from:
 --   one row with skills = "['SQL', 'Python', 'AWS']"
@@ -303,6 +456,20 @@ SELECT
 FROM job_postings_fact
 WHERE salary_year_avg IS NOT NULL
 LIMIT 5;
+/*
+
+┌────────────┬─────────────┬────────────┬────────────┐
+│ salary_int │ salary_text │  date_val  │ number_val │
+│   int32    │   varchar   │    date    │   int32    │
+├────────────┼─────────────┼────────────┼────────────┤
+│     110000 │ 110000.0    │ 2024-01-15 │         42 │
+│      65000 │ 65000.0     │ 2024-01-15 │         42 │
+│      90000 │ 90000.0     │ 2024-01-15 │         42 │
+│      55000 │ 55000.0     │ 2024-01-15 │         42 │
+│     120531 │ 120531.0    │ 2024-01-15 │         42 │
+└────────────┴─────────────┴────────────┴────────────┘  
+
+*/
 
 -- DuckDB shorthand (also works in PostgreSQL):
 SELECT
@@ -311,6 +478,20 @@ SELECT
 FROM job_postings_fact
 WHERE salary_year_avg IS NOT NULL
 LIMIT 5;
+/*
+
+┌────────────┬─────────────┐
+│ salary_int │ salary_text │
+│   int32    │   varchar   │
+├────────────┼─────────────┤
+│     110000 │ 110000.0    │
+│      65000 │ 65000.0     │
+│      90000 │ 90000.0     │
+│      55000 │ 55000.0     │
+│     120531 │ 120531.0    │
+└────────────┴─────────────┘
+
+*/
 
 
 -- ============================================================
@@ -328,7 +509,20 @@ SELECT
 FROM job_postings_fact
 WHERE salary_year_avg IS NOT NULL
 LIMIT 5;
+/*
 
+┌─────────────────┬──────────┬──────────────────────┬──────────┬──────────┬────────────────┬────────────────────┐
+│ salary_year_avg │ rounded  │ rounded_to_thousands │ ceiling  │  floor   │ absolute_value │    natural_log     │
+│     double      │  double  │        double        │  double  │  double  │     int32      │       double       │
+├─────────────────┼──────────┼──────────────────────┼──────────┼──────────┼────────────────┼────────────────────┤
+│        110000.0 │ 110000.0 │             110000.0 │ 110000.0 │ 110000.0 │             42 │ 11.608235644774552 │
+│         65000.0 │  65000.0 │              65000.0 │  65000.0 │  65000.0 │             42 │ 11.082142548877775 │
+│         90000.0 │  90000.0 │              90000.0 │  90000.0 │  90000.0 │             42 │ 11.407564949312402 │
+│         55000.0 │  55000.0 │              55000.0 │  55000.0 │  55000.0 │             42 │ 10.915088464214607 │
+│        120531.0 │ 120531.0 │             121000.0 │ 120531.0 │ 120531.0 │             42 │ 11.699662260237593 │
+└─────────────────┴──────────┴──────────────────────┴──────────┴──────────┴────────────────┴────────────────────┘
+
+*/
 -- I used LN() in the EDA project to create an "optimal score"
 -- that combined log-transformed demand with median salary.
 -- Log transformation helps normalize skewed distributions.
@@ -361,6 +555,38 @@ FROM cleaned_data
 WHERE salary > 0
 ORDER BY salary DESC
 LIMIT 20;
+/*  
+
+┌─────────┬──────────────────────┬──────────────────────┬───┬──────────────┬─────────────┬──────────┬─────────────┐
+│ job_id  │      job_title       │         role         │ … │ posted_month │ posted_year │  salary  │ salary_band │
+│  int32  │       varchar        │       varchar        │   │     date     │    int64    │  double  │   varchar   │
+├─────────┼──────────────────────┼──────────────────────┼───┼──────────────┼─────────────┼──────────┼─────────────┤
+│  296745 │ Data Scientist       │ data scientist       │ … │ 2023-05-01   │        2023 │ 960000.0 │ High        │
+│ 1231950 │ Data Science Manag…  │ data scientist       │ … │ 2024-11-01   │        2024 │ 920000.0 │ High        │
+│  673003 │ Senior Data Scient…  │ senior data scient…  │ … │ 2023-11-01   │        2023 │ 890000.0 │ High        │
+│ 1575798 │ Machine Learning E…  │ machine learning e…  │ … │ 2025-05-01   │        2025 │ 875000.0 │ High        │
+│ 1007105 │ Machine Learning E…  │ data scientist       │ … │ 2024-05-01   │        2024 │ 870000.0 │ High        │
+│  856772 │ Data Scientist       │ data scientist       │ … │ 2024-02-01   │        2024 │ 850000.0 │ High        │
+│ 1591743 │ AI/ML (Artificial …  │ machine learning e…  │ … │ 2025-06-01   │        2025 │ 800000.0 │ High        │
+│ 1443865 │ Senior Data Engine…  │ senior data engineer │ … │ 2025-03-01   │        2025 │ 800000.0 │ High        │
+│ 1574285 │ Data Scientist , G…  │ data scientist       │ … │ 2025-05-01   │        2025 │ 680000.0 │ High        │
+│  142665 │ Data Analyst         │ data analyst         │ … │ 2023-02-01   │        2023 │ 650000.0 │ High        │
+│  871759 │ Manager, Content D…  │ data engineer        │ … │ 2024-02-01   │        2024 │ 640000.0 │ High        │
+│ 1335282 │ Data Science Manag…  │ data scientist       │ … │ 2025-01-01   │        2025 │ 640000.0 │ High        │
+│  785438 │ Geographic Informa…  │ data scientist       │ … │ 2023-12-01   │        2023 │ 585000.0 │ High        │
+│  499552 │ Staff Data Scienti…  │ data scientist       │ … │ 2023-08-01   │        2023 │ 550000.0 │ High        │
+│  234407 │ Hybrid - Data Engi…  │ data engineer        │ … │ 2023-04-01   │        2023 │ 525000.0 │ High        │
+│  543480 │ Staff Data Scienti…  │ data scientist       │ … │ 2023-09-01   │        2023 │ 525000.0 │ High        │
+│   95558 │ Senior Data Scient…  │ senior data scient…  │ … │ 2023-01-01   │        2023 │ 475000.0 │ High        │
+│ 1218524 │ VP of Data Science…  │ data scientist       │ … │ 2024-10-01   │        2024 │ 475000.0 │ High        │
+│  685280 │ VP Data Science & …  │ senior data scient…  │ … │ 2023-11-01   │        2023 │ 463500.0 │ High        │
+│  494444 │ Data Engineer (L4)…  │ data engineer        │ … │ 2023-08-01   │        2023 │ 450000.0 │ High        │
+├─────────┴──────────────────────┴──────────────────────┴───┴──────────────┴─────────────┴──────────┴─────────────┤
+│ 20 rows                                                                                     9 columns (7 shown) │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+*/
+-- This is a real data cleaning pipeline that I might use in a production ETL job. It standardizes job titles, parses locations, extracts date parts, and creates salary bands. The cleaned data can then be used for analysis, reporting, or feeding into a machine learning model.
 
 
 -- ============================================================
