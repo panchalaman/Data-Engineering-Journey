@@ -26,6 +26,31 @@ SELECT
 FROM job_postings_fact
 WHERE salary_year_avg IS NOT NULL
 LIMIT 15;
+/*
+
+┌───────────────────────────┬─────────────────┬─────────────┐
+│      job_title_short      │ salary_year_avg │ salary_rank │
+│          varchar          │     double      │    int64    │
+├───────────────────────────┼─────────────────┼─────────────┤
+│ Data Scientist            │        960000.0 │           1 │
+│ Data Scientist            │        920000.0 │           2 │
+│ Senior Data Scientist     │        890000.0 │           3 │
+│ Machine Learning Engineer │        875000.0 │           4 │
+│ Data Scientist            │        870000.0 │           5 │
+│ Data Scientist            │        850000.0 │           6 │
+│ Senior Data Engineer      │        800000.0 │           7 │
+│ Machine Learning Engineer │        800000.0 │           8 │
+│ Data Scientist            │        680000.0 │           9 │
+│ Data Analyst              │        650000.0 │          10 │
+│ Data Scientist            │        640000.0 │          11 │
+│ Data Engineer             │        640000.0 │          12 │
+│ Data Scientist            │        585000.0 │          13 │
+│ Data Scientist            │        550000.0 │          14 │
+│ Data Engineer             │        525000.0 │          15 │
+├───────────────────────────┴─────────────────┴─────────────┤
+│ 15 rows                                         3 columns │
+└───────────────────────────────────────────────────────────┘
+*/
 
 -- ROW_NUMBER + PARTITION BY
 -- Rank salaries WITHIN each job title
@@ -41,7 +66,36 @@ FROM job_postings_fact
 WHERE salary_year_avg IS NOT NULL
 ORDER BY job_title_short, rank_within_role
 LIMIT 20;
+/*
 
+┌──────────────────┬────────────┬─────────────────┬──────────────────┐
+│ job_title_short  │ company_id │ salary_year_avg │ rank_within_role │
+│     varchar      │   int32    │     double      │      int64       │
+├──────────────────┼────────────┼─────────────────┼──────────────────┤
+│ Business Analyst │     951196 │        390000.0 │                1 │
+│ Business Analyst │       5987 │        387460.0 │                2 │
+│ Business Analyst │       6334 │        286000.0 │                3 │
+│ Business Analyst │       5429 │        268500.0 │                4 │
+│ Business Analyst │     365247 │        264000.0 │                5 │
+│ Business Analyst │     365247 │        264000.0 │                6 │
+│ Business Analyst │     365247 │        264000.0 │                7 │
+│ Business Analyst │     324715 │        257937.0 │                8 │
+│ Business Analyst │     301981 │        257500.0 │                9 │
+│ Business Analyst │       6334 │        250000.0 │               10 │
+│ Business Analyst │     722748 │        250000.0 │               11 │
+│ Business Analyst │      13226 │        243500.0 │               12 │
+│ Business Analyst │    1089315 │        230000.0 │               13 │
+│ Business Analyst │      18678 │        229000.0 │               14 │
+│ Business Analyst │     928629 │        226000.0 │               15 │
+│ Business Analyst │     252621 │        220000.0 │               16 │
+│ Business Analyst │      39393 │        220000.0 │               17 │
+│ Business Analyst │       5765 │        214500.0 │               18 │
+│ Business Analyst │       5765 │        214500.0 │               19 │
+│ Business Analyst │       9445 │        214000.0 │               20 │
+├──────────────────┴────────────┴─────────────────┴──────────────────┤
+│ 20 rows                                                  4 columns │
+└────────────────────────────────────────────────────────────────────┘
+*/
 -- The classic pattern: "Top N per group"
 -- Get the highest-paying posting for each role
 WITH ranked AS (
