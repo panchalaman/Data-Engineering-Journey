@@ -114,6 +114,31 @@ SELECT *
 FROM ranked
 WHERE rn = 1
 ORDER BY salary_year_avg DESC;
+/*
+
+┌───────────────────────────┬────────────────────────────────────────────────┬─────────────────┬───────┐
+│      job_title_short      │                   job_title                    │ salary_year_avg │  rn   │
+│          varchar          │                    varchar                     │     double      │ int64 │
+├───────────────────────────┼────────────────────────────────────────────────┼─────────────────┼───────┤
+│ Data Scientist            │ Data Scientist                                 │        960000.0 │     1 │
+│ Senior Data Scientist     │ Senior Data Scientist                          │        890000.0 │     1 │
+│ Machine Learning Engineer │ Machine Learning Engineer                      │        875000.0 │     1 │
+│ Senior Data Engineer      │ Senior Data Engineer (MDM team), DTG           │        800000.0 │     1 │
+│ Data Analyst              │ Data Analyst                                   │        650000.0 │     1 │
+│ Data Engineer             │ Manager, Content Data Engineering              │        640000.0 │     1 │
+│ Software Engineer         │ PhD Computer Scientist/Software Developer $1M+ │        425000.0 │     1 │
+│ Senior Data Analyst       │ SVP, Data Analytics                            │        425000.0 │     1 │
+│ Business Analyst          │ Старший продуктовый аналитик                   │        390000.0 │     1 │
+│ Cloud Engineer            │ Platform and Technical Communications Lead     │        305000.0 │     1 │
+├───────────────────────────┴────────────────────────────────────────────────┴─────────────────┴───────┤
+│ 10 rows                                                                                    4 columns │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────┘
+*/
+-- This "Top N per group" pattern is super common in analytics:
+-- - Top 3 products by sales in each category
+-- - Top 5 customers by revenue in each region
+-- - Highest-rated movies in each genre
+-- - etc.
 
 -- This pattern comes up ALL THE TIME:
 --   1. Assign row numbers within partitions
