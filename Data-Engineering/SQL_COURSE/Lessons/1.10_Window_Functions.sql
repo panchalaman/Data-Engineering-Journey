@@ -165,6 +165,31 @@ SELECT
 FROM job_postings_fact
 WHERE salary_year_avg IS NOT NULL
 LIMIT 15;
+/*
+
+┌───────────────────────────┬─────────────────┬─────────┬───────┬────────────┐
+│      job_title_short      │ salary_year_avg │ row_num │ rank  │ dense_rank │
+│          varchar          │     double      │  int64  │ int64 │   int64    │
+├───────────────────────────┼─────────────────┼─────────┼───────┼────────────┤
+│ Data Scientist            │        960000.0 │       1 │     1 │          1 │
+│ Data Scientist            │        920000.0 │       2 │     2 │          2 │
+│ Senior Data Scientist     │        890000.0 │       3 │     3 │          3 │
+│ Machine Learning Engineer │        875000.0 │       4 │     4 │          4 │
+│ Data Scientist            │        870000.0 │       5 │     5 │          5 │
+│ Data Scientist            │        850000.0 │       6 │     6 │          6 │
+│ Machine Learning Engineer │        800000.0 │       7 │     7 │          7 │
+│ Senior Data Engineer      │        800000.0 │       8 │     7 │          7 │
+│ Data Scientist            │        680000.0 │       9 │     9 │          8 │
+│ Data Analyst              │        650000.0 │      10 │    10 │          9 │
+│ Data Engineer             │        640000.0 │      11 │    11 │         10 │
+│ Data Scientist            │        640000.0 │      12 │    11 │         10 │
+│ Data Scientist            │        585000.0 │      13 │    13 │         11 │
+│ Data Scientist            │        550000.0 │      14 │    14 │         12 │
+│ Data Engineer             │        525000.0 │      15 │    15 │         13 │
+├───────────────────────────┴─────────────────┴─────────┴───────┴────────────┤
+│ 15 rows                                                          5 columns │
+└────────────────────────────────────────────────────────────────────────────┘
+*/
 
 -- For "top N per group" queries, I almost always use
 -- ROW_NUMBER because I want exactly N results.
